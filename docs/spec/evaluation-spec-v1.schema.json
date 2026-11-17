@@ -935,11 +935,15 @@
               "$ref": "#/$defs/Transform"
             },
             {
+              "$ref": "#/$defs/TransformWithOffset"
+            },
+            {
               "type": "null"
             }
           ],
           "default": null,
-          "description": "First stage only: transform primary and secondary values before the metric (log is natural; inv is reciprocal)."
+          "description": "First stage only: transform primary and secondary values before the metric (log is natural; inv is reciprocal), by name or as {name, offset} to add an offset first.",
+          "title": "Transform"
         },
         "values": {
           "anyOf": [
@@ -1455,6 +1459,25 @@
       ],
       "title": "Transform",
       "type": "string"
+    },
+    "TransformWithOffset": {
+      "additionalProperties": false,
+      "description": "A transform of the values shifted first: ``name(x + offset)``.\n\nE.g. ``log`` of flows with zero days, which a plain ``log`` leaves out.",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/Transform"
+        },
+        "offset": {
+          "$ref": "#/$defs/Quantity",
+          "description": "Added to both sides before the transform: a value with its unit ({value: 0.01, unit: \"m3/s\"}), converted to the evaluation unit by scale alone."
+        }
+      },
+      "required": [
+        "name",
+        "offset"
+      ],
+      "title": "TransformWithOffset",
+      "type": "object"
     },
     "ValuesRef": {
       "additionalProperties": false,

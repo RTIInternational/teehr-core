@@ -38,8 +38,10 @@ from teehr_core.metrics.registry import (
     SPEC_SIDES,
     Metric,
     MetricRequest,
+    OffsetTransform,
     Params,
     Transform,
+    TransformKey,
     canonical_name,
     compute_grouped,
     compute_metrics,
@@ -96,6 +98,7 @@ def evaluate(
     names: Iterable[str],
     *,
     transform: TransformLike = None,
+    transform_offset: float | None = None,
     times: TimesLike | None = None,
     threshold: float | ArrayLike | dict[str, float] | None = None,
     normalize_by: str | float | ArrayLike | None = None,
@@ -119,10 +122,15 @@ def evaluate(
     Probabilistic metrics read long-format data: ``cases`` gives each pair's forecast
     case (pairs of one ensemble or quantile forecast share it) and ``quantiles`` each
     pair's quantile level. ``scale`` is MASE's in-sample naive scale: one number, or one
-    per pair. ``kge_weights`` are the KGE family's ``(sr, sa, sb)``.
+    per pair. ``kge_weights`` are the KGE family's ``(sr, sa, sb)``. ``transform_offset``
+    is added to both sides before ``transform`` (e.g. ``log(Q + 0.01)`` for zero flows).
     """
     o, p, gid = _arrays(obs, pred)
-    t = Transform(transform) if transform is not None else None
+    t: TransformKey | None = Transform(transform) if transform is not None else None
+    if transform_offset is not None:
+        if t is None:
+            raise ValueError("transform_offset needs a transform")
+        t = OffsetTransform(t, float(transform_offset))  # type: ignore[arg-type]
     columns: dict[str, npt.NDArray[np.float64]] = {}
     params: dict[str, Any] = {}
     if times is not None:

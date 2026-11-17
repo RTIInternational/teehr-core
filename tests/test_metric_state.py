@@ -7,7 +7,13 @@ import numpy as np
 import pyarrow as pa
 import pytest
 
-from teehr_core.metrics.registry import METRICS, MetricRequest, Transform, compute_metrics
+from teehr_core.metrics.registry import (
+    METRICS,
+    MetricRequest,
+    OffsetTransform,
+    Transform,
+    compute_metrics,
+)
 from teehr_core.metrics.state import (
     SKETCH,
     SKETCH_TYPE,
@@ -201,6 +207,7 @@ def test_transformed_metrics_merge_too(engine: str) -> None:
     requests = [
         MetricRequest("root_mean_square_error", Transform.LOG),
         MetricRequest("nash_sutcliffe_efficiency", Transform.SQRT),
+        MetricRequest("root_mean_square_error", OffsetTransform(Transform.LOG, 0.5)),
     ]
     assert mergeable(requests)
     got, want = _merged(requests, 4, engine=engine), _direct(requests)

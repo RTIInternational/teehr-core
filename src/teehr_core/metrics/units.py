@@ -237,7 +237,7 @@ def result_factors(spec: EvaluationSpec, conv: Conversion) -> dict[str, Factor]:
             else:
                 cols[m.output_name()] = None
                 continue
-        cols[m.output_name()] = kind_factor(kind, m.transform, conv)
+        cols[m.output_name()] = kind_factor(kind, m.transform_name, conv)
     if first.bootstrap is not None:
         for m in first.bootstrapped():
             for c in first.bootstrap.columns(m.output_name()):
