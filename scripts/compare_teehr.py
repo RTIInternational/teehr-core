@@ -66,7 +66,8 @@ def teehr_metrics() -> dict[str, MetricsBasemodel]:
 def teehr_value(model: MetricsBasemodel, o, p, t):
     fn = model.func(model)
     params = list(inspect.signature(fn).parameters)
-    args = {"p": pd.Series(o), "s": pd.Series(p), "value_time": pd.Series(t),
+    naive = pd.Series(t.tz_convert("UTC").tz_localize(None))  # as teehr's warehouse holds them
+    args = {"p": pd.Series(o), "s": pd.Series(p), "value_time": naive,
             "threshold_series": pd.Series(np.full(len(o), THRESHOLD))}  # fmt: skip
     try:
         return fn(*(args[k] for k in params))
@@ -100,7 +101,8 @@ def same(a, b) -> bool:
     if undefined(a) or undefined(b) or isinstance(a, str) or isinstance(b, str):
         return False
     if isinstance(a, (pd.Timestamp, np.datetime64)) or hasattr(b, "isoformat"):
-        return pd.Timestamp(a) == pd.Timestamp(b)
+        a, b = pd.Timestamp(a), pd.Timestamp(b)  # naive UTC (teehr) vs aware (core)
+        return (a.tz_convert(None) if a.tz else a) == (b.tz_convert(None) if b.tz else b)
     return math.isclose(float(a), float(b), rel_tol=1e-9, abs_tol=1e-12)
 
 

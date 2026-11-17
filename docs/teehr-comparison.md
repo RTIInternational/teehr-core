@@ -8,7 +8,7 @@ zeros, gaps) and lists where they differ. Run it with teehr's Python:
 
 ## Results (2026-11-16, teehr 0.8.0 main, teehr-core with VeriRace 668ab7d)
 
-39 shared metrics; 29 agree on every case. The rest, and what was decided
+41 shared metrics; 29 agree on every case (32 with teehr#874). The rest, and what was decided
 (teehr-shared-eval-spec `DECISIONS.md`):
 
 | Metric | Difference | Outcome |
@@ -19,6 +19,6 @@ zeros, gaps) and lists where they differ. Run it with teehr's Python:
 | `success_ratio` | different everywhere | teehr computed accuracy: the core's definition stands; teehr's is the new `proportion_correct` |
 | `flow_duration_curve_slope` | different everywhere | teehr's was a linear slope at other quantiles: the core's log form stands; the linear slope is `log: false` |
 | `average`, `count`, `sum`, `variance` | differ only with gaps | the core uses complete pairs (the sample every metric uses); teehr used each side's own values |
+| `center_of_timing`, `standard_deviation_of_timing` | only one pair: teehr raises `IndexError`, the core is null | ported from teehr; the core also takes `year_start_month` (default 10) and tz-aware times (teehr's need naive UTC) |
 
-teehr only: `center_of_timing`, `standard_deviation_of_timing` (being added).
 Not yet compared: `mean_crps_ensemble`, `mean_brier_score` (ensemble inputs).
