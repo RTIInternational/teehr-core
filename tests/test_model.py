@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import csv
-from pathlib import Path
-
 import numpy as np
 import pyarrow as pa
 import pytest
@@ -26,18 +23,6 @@ from teehr_core.model.units import (
     conversion_between,
     merge,
 )
-
-UNITS = Path(__file__).parent / "fixtures" / "units.csv"
-
-
-@pytest.fixture
-def units() -> UnitRegistry:
-    with UNITS.open() as f:
-        rows = [
-            {**r, "aliases": [a for a in r["aliases"].split("|") if a]} for r in csv.DictReader(f)
-        ]
-    return UnitRegistry.from_rows(rows)
-
 
 # --- dataset types ------------------------------------------------------------------
 

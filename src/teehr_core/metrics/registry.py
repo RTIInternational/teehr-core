@@ -35,6 +35,8 @@ __all__ = [
     "compute_grouped",
     "compute_metrics",
     "metric_names",
+    "parse_transform_label",
+    "transform_label",
     "transformed",
 ]
 
@@ -73,6 +75,23 @@ class OffsetTransform:
 
 #: What a :class:`MetricRequest` is transformed by: a transform, with or without an offset.
 TransformKey = Transform | OffsetTransform
+
+
+def transform_label(key: TransformKey | None) -> str:
+    """Return ``key`` as text (``''``, ``log``, ``log+0.01``), e.g. for state rows."""
+    if key is None:
+        return ""
+    if isinstance(key, OffsetTransform):
+        return f"{key.transform.value}+{key.offset!r}"
+    return key.value
+
+
+def parse_transform_label(label: str) -> TransformKey | None:
+    """Return the transform key :func:`transform_label` gave ``label`` for."""
+    if not label:
+        return None
+    name, plus, offset = label.partition("+")
+    return OffsetTransform(Transform(name), float(offset)) if plus else Transform(name)
 
 
 def base_transform(key: TransformKey | None) -> Transform | None:
