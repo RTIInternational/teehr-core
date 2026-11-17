@@ -1,0 +1,1605 @@
+{
+  "description": "Exact-arithmetic reference values (no NumPy or metric libraries).",
+  "metric_definitions": {
+    "count": "number of pairs with finite obs and sim",
+    "mean_error": "mean(sim - obs)",
+    "mean_absolute_error": "mean(|sim - obs|)",
+    "mean_square_error": "mean((sim - obs)^2)",
+    "root_mean_square_error": "sqrt(mean((sim - obs)^2))",
+    "max_value_delta": "max(sim) - max(obs)",
+    "relative_bias": "sum(sim - obs) / sum(obs); null if sum(obs) == 0",
+    "mean_absolute_relative_error": "sum(|sim - obs|) / sum(obs); null if sum(obs) == 0",
+    "multiplicative_bias": "mean(sim) / mean(obs); null if mean(obs) == 0",
+    "relative_median": "median(sim) / median(obs) of quantile-sketch values (each value snapped to its 0.1% bucket's representative); null if median(obs) == 0",
+    "relative_minimum": "min(sim) / min(obs); null if min(obs) == 0",
+    "relative_maximum": "max(sim) / max(obs); null if max(obs) == 0",
+    "relative_standard_deviation": "std(sim) / std(obs), population std; null if obs is constant",
+    "mean_absolute_percentage_error": "100 * mean(|sim - obs| / |obs|) over pairs with obs != 0; null if none",
+    "symmetric_mean_absolute_percentage_error": "100 * mean(2|sim - obs| / (|obs| + |sim|)); pairs with both 0 count as 0",
+    "normalized_mean_absolute_error": "mean(|sim - obs|) / mean(obs); null if mean(obs) == 0",
+    "normalized_root_mean_square_error": "rmse / mean(obs); null if mean(obs) == 0",
+    "pearson_correlation": "Pearson correlation; null if obs or sim is constant (spread within 16 eps counts as constant)",
+    "spearman_correlation": "Spearman correlation of average ranks; null if obs or sim is constant",
+    "r_squared": "pearson_r ** 2; null when pearson_r is",
+    "coefficient_of_variation_ratio": "(std(sim)/mean(sim)) / (std(obs)/mean(obs)); null if obs is constant or a mean is 0",
+    "root_mean_standard_deviation_ratio": "rmse / std(obs); null if obs is constant",
+    "nash_sutcliffe_efficiency": "1 - sum((sim - obs)^2) / sum((obs - mean(obs))^2); null if obs is constant (spread within 16 eps counts as constant)",
+    "nash_sutcliffe_efficiency_normalized": "1 / (2 - nse); null when nse is",
+    "kling_gupta_efficiency": "KGE 2009 (Gupta et al.): 1 - sqrt((r-1)^2 + (alpha-1)^2 + (beta-1)^2), alpha = std(sim)/std(obs) (population std), beta = mean(sim)/mean(obs); null if obs or sim is constant or mean(obs) == 0",
+    "kling_gupta_efficiency_mod1": "KGE' (Kling et al. 2012): as kge with alpha = cv(sim)/cv(obs), cv = std/mean; null if obs or sim is constant or a mean is 0",
+    "kling_gupta_efficiency_mod2": "KGE'' (Tang et al. 2021): 1 - sqrt((r-1)^2 + (alpha-1)^2 + beta^2), alpha = std(sim)/std(obs), beta = (mean(sim) - mean(obs))/std(obs); null if obs or sim is constant",
+    "mean_crps_ensemble": "mean over cases of mean|x - y| - sum|x_i - x_j| / (2 m^2) (fair: / (2 m (m - 1))); one member: |x - y|",
+    "mean_brier_score": "mean over cases of (fraction of members >= t - [obs >= t])^2",
+    "mean_pinball_loss": "mean over rows of q (y - x) if y >= x else (1 - q)(x - y)",
+    "interval_coverage": "fraction of cases with lo <= y <= hi (levels default 0.05, 0.95)",
+    "mean_interval_width": "mean of hi - lo",
+    "mean_interval_score": "mean of (hi - lo) + (2/alpha) max(lo - y, 0) + (2/alpha) max(y - hi, 0)",
+    "mean_absolute_scaled_error": "mean over pairs with scale > 0 of |sim - obs| / scale (scale: a per-pair column)",
+    "ensemble_spread": "sqrt(mean over cases of the members' variance, m - 1 denominator)",
+    "ensemble_mean_root_mean_square_error": "sqrt(mean over cases of (mean of members - y)^2)",
+    "spread_skill_ratio": "sqrt(mean over cases of (m + 1) / m x variance) / ensemble_mean_rmse",
+    "rank_frequency": "fraction of cases whose rank (members < y + floor(members == y / 2)) is k",
+    "rank_outlier_fraction": "fraction of cases with rank 0 or m",
+    "rank_histogram_reliability": "sum over k = 0..m of |rank_frequency(k) - 1 / (m + 1)|; null for mixed ensemble sizes",
+    "hits": "pairs with obs >= t and sim >= t",
+    "misses": "pairs with obs >= t and sim < t",
+    "false_alarms": "pairs with obs < t and sim >= t",
+    "correct_negatives": "pairs with obs < t and sim < t",
+    "probability_of_detection": "hits / (hits + misses); null if 0/0",
+    "probability_of_false_detection": "false_alarms / (false_alarms + correct_negatives); null if 0/0",
+    "false_alarm_ratio": "false_alarms / (hits + false_alarms); null if 0/0",
+    "critical_success_index": "hits / (hits + misses + false_alarms); null if 0/0",
+    "success_ratio": "hits / (hits + false_alarms); null if 0/0",
+    "frequency_bias_index": "(hits + false_alarms) / (hits + misses); null if 0/0",
+    "minimum": "min of one side",
+    "maximum": "max of one side",
+    "average": "mean of one side",
+    "sum": "sum of one side",
+    "variance": "population variance of one side",
+    "flow_duration_curve_slope": "(ln Q(0.33) - ln Q(0.66)) / 0.33, Q(e) = quantile 1 - e (type 2) of quantile-sketch values (0.1% buckets); null if <= 0",
+    "max_value_time": "earliest time of the maximum of one side",
+    "max_value_time_delta": "seconds from earliest time of max(obs) to earliest time of max(sim)",
+    "annual_peak_flow_bias": "sum of (annual max(sim) - annual max(obs)) / sum of annual max(obs); years start in year_start_month (default 1)"
+  },
+  "metric_specs": [
+    "count",
+    "mean_error",
+    "mean_absolute_error",
+    "mean_square_error",
+    "root_mean_square_error",
+    "max_value_delta",
+    "relative_bias",
+    "mean_absolute_relative_error",
+    "multiplicative_bias",
+    "relative_median",
+    "relative_minimum",
+    "relative_maximum",
+    "relative_standard_deviation",
+    "mean_absolute_percentage_error",
+    "symmetric_mean_absolute_percentage_error",
+    "normalized_mean_absolute_error",
+    "normalized_root_mean_square_error",
+    "pearson_correlation",
+    "spearman_correlation",
+    "r_squared",
+    "coefficient_of_variation_ratio",
+    "root_mean_standard_deviation_ratio",
+    "nash_sutcliffe_efficiency",
+    "nash_sutcliffe_efficiency_normalized",
+    "kling_gupta_efficiency",
+    "kling_gupta_efficiency_mod1",
+    "kling_gupta_efficiency_mod2",
+    {
+      "name": "hits",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "hits_q75"
+    },
+    {
+      "name": "misses",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "misses_q75"
+    },
+    {
+      "name": "false_alarms",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "false_alarms_q75"
+    },
+    {
+      "name": "correct_negatives",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "correct_negatives_q75"
+    },
+    {
+      "name": "probability_of_detection",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "probability_of_detection_q75"
+    },
+    {
+      "name": "probability_of_false_detection",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "probability_of_false_detection_q75"
+    },
+    {
+      "name": "false_alarm_ratio",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "false_alarm_ratio_q75"
+    },
+    {
+      "name": "critical_success_index",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "critical_success_index_q75"
+    },
+    {
+      "name": "success_ratio",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "success_ratio_q75"
+    },
+    {
+      "name": "frequency_bias_index",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "frequency_bias_index_q75"
+    },
+    {
+      "name": "normalized_mean_absolute_error",
+      "normalize_by": "range_primary",
+      "as": "nmae_range"
+    },
+    {
+      "name": "normalized_root_mean_square_error",
+      "normalize_by": "range_primary",
+      "as": "nrmse_range"
+    },
+    {
+      "name": "minimum",
+      "side": "primary"
+    },
+    {
+      "name": "minimum",
+      "side": "secondary"
+    },
+    {
+      "name": "maximum",
+      "side": "primary"
+    },
+    {
+      "name": "maximum",
+      "side": "secondary"
+    },
+    {
+      "name": "average",
+      "side": "primary"
+    },
+    {
+      "name": "average",
+      "side": "secondary"
+    },
+    {
+      "name": "sum",
+      "side": "primary"
+    },
+    {
+      "name": "sum",
+      "side": "secondary"
+    },
+    {
+      "name": "variance",
+      "side": "primary"
+    },
+    {
+      "name": "variance",
+      "side": "secondary"
+    },
+    {
+      "name": "flow_duration_curve_slope",
+      "side": "primary"
+    },
+    {
+      "name": "flow_duration_curve_slope",
+      "side": "secondary"
+    },
+    {
+      "name": "max_value_time",
+      "side": "primary"
+    },
+    {
+      "name": "max_value_time",
+      "side": "secondary"
+    },
+    {
+      "name": "mean_crps_ensemble"
+    },
+    {
+      "name": "mean_crps_ensemble",
+      "estimator": "fair",
+      "as": "crps_fair"
+    },
+    {
+      "name": "mean_brier_score",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "mean_brier_score_q75"
+    },
+    {
+      "name": "max_value_time_delta"
+    },
+    {
+      "name": "annual_peak_flow_bias"
+    },
+    {
+      "name": "annual_peak_flow_bias",
+      "year_start_month": 10,
+      "as": "annual_peak_flow_bias_wy"
+    }
+  ],
+  "cases": [
+    {
+      "name": "simple",
+      "note": "small mixed over/under prediction",
+      "obs": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "sim": [
+        1.5,
+        1.5,
+        3.5,
+        3,
+        6
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00",
+        "2025-10-01T02:00:00+00:00"
+      ],
+      "expected": {
+        "count": 5,
+        "mean_error": 0.1,
+        "mean_absolute_error": 0.7,
+        "mean_square_error": 0.55,
+        "root_mean_square_error": 0.7416198487095663,
+        "max_value_delta": 1.0,
+        "relative_bias": 0.03333333333333333,
+        "mean_absolute_relative_error": 0.23333333333333334,
+        "multiplicative_bias": 1.0333333333333334,
+        "relative_median": 1.0,
+        "relative_minimum": 1.5,
+        "relative_maximum": 1.2,
+        "relative_standard_deviation": 1.1704699910719625,
+        "mean_absolute_percentage_error": 27.333333333333332,
+        "symmetric_mean_absolute_percentage_error": 26.14185814185814,
+        "normalized_mean_absolute_error": 0.23333333333333334,
+        "normalized_root_mean_square_error": 0.2472066162365221,
+        "root_mean_standard_deviation_ratio": 0.5244044240850758,
+        "nash_sutcliffe_efficiency": 0.725,
+        "nash_sutcliffe_efficiency_normalized": 0.7843137254901961,
+        "coefficient_of_variation_ratio": 1.13271289458577,
+        "pearson_correlation": 0.897075540602599,
+        "spearman_correlation": 0.8720815992723809,
+        "r_squared": 0.8047445255474452,
+        "kling_gupta_efficiency": 0.7980976144038081,
+        "kling_gupta_efficiency_mod1": 0.8287771398361419,
+        "kling_gupta_efficiency_mod2": 0.788686341666417,
+        "hits_q75": 1,
+        "misses_q75": 1,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 3,
+        "probability_of_detection_q75": 0.5,
+        "probability_of_false_detection_q75": 0.0,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 0.5,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 0.5,
+        "nmae_range": 0.175,
+        "nrmse_range": 0.18540496217739158,
+        "minimum_primary": 1.0,
+        "maximum_primary": 5.0,
+        "average_primary": 3.0,
+        "sum_primary": 15.0,
+        "variance_primary": 2.0,
+        "flow_duration_curve_slope_primary": 2.1030310040408247,
+        "max_value_time_primary": "2025-10-01T02:00:00+00:00",
+        "minimum_secondary": 1.5,
+        "maximum_secondary": 6.0,
+        "average_secondary": 3.1,
+        "sum_secondary": 15.5,
+        "variance_secondary": 2.74,
+        "flow_duration_curve_slope_secondary": 2.5696978262631403,
+        "max_value_time_secondary": "2025-10-01T02:00:00+00:00",
+        "mean_crps_ensemble": 0.7,
+        "crps_fair": 0.7,
+        "mean_brier_score_q75": 0.2,
+        "max_value_time_delta": 0.0,
+        "annual_peak_flow_bias": 0.2,
+        "annual_peak_flow_bias_wy": 0.07142857142857142
+      }
+    },
+    {
+      "name": "perfect",
+      "note": "sim == obs: NSE = KGE = r = 1, errors 0",
+      "obs": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "sim": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00"
+      ],
+      "expected": {
+        "count": 4,
+        "mean_error": 0.0,
+        "mean_absolute_error": 0.0,
+        "mean_square_error": 0.0,
+        "root_mean_square_error": 0.0,
+        "max_value_delta": 0.0,
+        "relative_bias": 0.0,
+        "mean_absolute_relative_error": 0.0,
+        "multiplicative_bias": 1.0,
+        "relative_median": 1.0,
+        "relative_minimum": 1.0,
+        "relative_maximum": 1.0,
+        "relative_standard_deviation": 1.0,
+        "mean_absolute_percentage_error": 0.0,
+        "symmetric_mean_absolute_percentage_error": 0.0,
+        "normalized_mean_absolute_error": 0.0,
+        "normalized_root_mean_square_error": 0.0,
+        "root_mean_standard_deviation_ratio": 0.0,
+        "nash_sutcliffe_efficiency": 1.0,
+        "nash_sutcliffe_efficiency_normalized": 1.0,
+        "coefficient_of_variation_ratio": 1.0,
+        "pearson_correlation": 1.0,
+        "spearman_correlation": 1.0,
+        "r_squared": 1.0,
+        "kling_gupta_efficiency": 1.0,
+        "kling_gupta_efficiency_mod1": 1.0,
+        "kling_gupta_efficiency_mod2": 1.0,
+        "hits_q75": 1,
+        "misses_q75": 0,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 3,
+        "probability_of_detection_q75": 1.0,
+        "probability_of_false_detection_q75": 0.0,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 1.0,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 1.0,
+        "nmae_range": 0.0,
+        "nrmse_range": 0.0,
+        "minimum_primary": 2.0,
+        "maximum_primary": 8.0,
+        "average_primary": 5.0,
+        "sum_primary": 20.0,
+        "variance_primary": 5.0,
+        "flow_duration_curve_slope_primary": 1.224242832323477,
+        "max_value_time_primary": "2025-10-01T01:00:00+00:00",
+        "minimum_secondary": 2.0,
+        "maximum_secondary": 8.0,
+        "average_secondary": 5.0,
+        "sum_secondary": 20.0,
+        "variance_secondary": 5.0,
+        "flow_duration_curve_slope_secondary": 1.224242832323477,
+        "max_value_time_secondary": "2025-10-01T01:00:00+00:00",
+        "mean_crps_ensemble": 0.0,
+        "crps_fair": 0.0,
+        "mean_brier_score_q75": 0.0,
+        "max_value_time_delta": 0.0,
+        "annual_peak_flow_bias": 0.0,
+        "annual_peak_flow_bias_wy": 0.0
+      }
+    },
+    {
+      "name": "constant_bias",
+      "note": "sim = obs + 2: r = 1, alpha = 1",
+      "obs": [
+        10,
+        20,
+        30,
+        40
+      ],
+      "sim": [
+        12,
+        22,
+        32,
+        42
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00"
+      ],
+      "expected": {
+        "count": 4,
+        "mean_error": 2.0,
+        "mean_absolute_error": 2.0,
+        "mean_square_error": 4.0,
+        "root_mean_square_error": 2.0,
+        "max_value_delta": 2.0,
+        "relative_bias": 0.08,
+        "mean_absolute_relative_error": 0.08,
+        "multiplicative_bias": 1.08,
+        "relative_median": 1.0799546414005348,
+        "relative_minimum": 1.2,
+        "relative_maximum": 1.05,
+        "relative_standard_deviation": 1.0,
+        "mean_absolute_percentage_error": 10.416666666666666,
+        "symmetric_mean_absolute_percentage_error": 9.758822347335329,
+        "normalized_mean_absolute_error": 0.08,
+        "normalized_root_mean_square_error": 0.08,
+        "root_mean_standard_deviation_ratio": 0.17888543819998318,
+        "nash_sutcliffe_efficiency": 0.968,
+        "nash_sutcliffe_efficiency_normalized": 0.9689922480620154,
+        "coefficient_of_variation_ratio": 0.9259259259259259,
+        "pearson_correlation": 1.0,
+        "spearman_correlation": 1.0,
+        "r_squared": 1.0,
+        "kling_gupta_efficiency": 0.92,
+        "kling_gupta_efficiency_mod1": 0.8909726252268202,
+        "kling_gupta_efficiency_mod2": 0.8211145618000169,
+        "hits_q75": 1,
+        "misses_q75": 0,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 3,
+        "probability_of_detection_q75": 1.0,
+        "probability_of_false_detection_q75": 0.0,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 1.0,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 1.0,
+        "nmae_range": 0.06666666666666667,
+        "nrmse_range": 0.06666666666666667,
+        "minimum_primary": 10.0,
+        "maximum_primary": 40.0,
+        "average_primary": 25.0,
+        "sum_primary": 100.0,
+        "variance_primary": 125.0,
+        "flow_duration_curve_slope_primary": 1.2303034404042865,
+        "max_value_time_primary": "2025-10-01T01:00:00+00:00",
+        "minimum_secondary": 12.0,
+        "maximum_secondary": 42.0,
+        "average_secondary": 27.0,
+        "sum_secondary": 108.0,
+        "variance_secondary": 125.0,
+        "flow_duration_curve_slope_secondary": 1.1333337111113377,
+        "max_value_time_secondary": "2025-10-01T01:00:00+00:00",
+        "mean_crps_ensemble": 2.0,
+        "crps_fair": 2.0,
+        "mean_brier_score_q75": 0.0,
+        "max_value_time_delta": 0.0,
+        "annual_peak_flow_bias": 0.05,
+        "annual_peak_flow_bias_wy": 0.06666666666666667
+      }
+    },
+    {
+      "name": "scaled",
+      "note": "sim = 2 * obs: r = 1, alpha = beta = 2",
+      "obs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "sim": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00"
+      ],
+      "expected": {
+        "count": 4,
+        "mean_error": 2.5,
+        "mean_absolute_error": 2.5,
+        "mean_square_error": 7.5,
+        "root_mean_square_error": 2.7386127875258306,
+        "max_value_delta": 4.0,
+        "relative_bias": 1.0,
+        "mean_absolute_relative_error": 1.0,
+        "multiplicative_bias": 2.0,
+        "relative_median": 1.9993066673794133,
+        "relative_minimum": 2.0,
+        "relative_maximum": 2.0,
+        "relative_standard_deviation": 2.0,
+        "mean_absolute_percentage_error": 100.0,
+        "symmetric_mean_absolute_percentage_error": 66.66666666666667,
+        "normalized_mean_absolute_error": 1.0,
+        "normalized_root_mean_square_error": 1.0954451150103321,
+        "root_mean_standard_deviation_ratio": 2.449489742783178,
+        "nash_sutcliffe_efficiency": -5.0,
+        "nash_sutcliffe_efficiency_normalized": 0.14285714285714285,
+        "coefficient_of_variation_ratio": 1.0,
+        "pearson_correlation": 1.0,
+        "spearman_correlation": 1.0,
+        "r_squared": 1.0,
+        "kling_gupta_efficiency": -0.41421356237309503,
+        "kling_gupta_efficiency_mod1": 0.0,
+        "kling_gupta_efficiency_mod2": -1.449489742783178,
+        "hits_q75": 1,
+        "misses_q75": 0,
+        "false_alarms_q75": 2,
+        "correct_negatives_q75": 1,
+        "probability_of_detection_q75": 1.0,
+        "probability_of_false_detection_q75": 0.6666666666666666,
+        "false_alarm_ratio_q75": 0.6666666666666666,
+        "critical_success_index_q75": 0.3333333333333333,
+        "success_ratio_q75": 0.3333333333333333,
+        "frequency_bias_index_q75": 3.0,
+        "nmae_range": 0.8333333333333334,
+        "nrmse_range": 0.9128709291752769,
+        "minimum_primary": 1.0,
+        "maximum_primary": 4.0,
+        "average_primary": 2.5,
+        "sum_primary": 10.0,
+        "variance_primary": 1.25,
+        "flow_duration_curve_slope_primary": 1.2303034404042865,
+        "max_value_time_primary": "2025-10-01T01:00:00+00:00",
+        "minimum_secondary": 2.0,
+        "maximum_secondary": 8.0,
+        "average_secondary": 5.0,
+        "sum_secondary": 20.0,
+        "variance_secondary": 5.0,
+        "flow_duration_curve_slope_secondary": 1.224242832323477,
+        "max_value_time_secondary": "2025-10-01T01:00:00+00:00",
+        "mean_crps_ensemble": 2.5,
+        "crps_fair": 2.5,
+        "mean_brier_score_q75": 0.5,
+        "max_value_time_delta": 0.0,
+        "annual_peak_flow_bias": 1.0,
+        "annual_peak_flow_bias_wy": 1.0
+      }
+    },
+    {
+      "name": "anticorrelated",
+      "note": "r = -1, NSE strongly negative",
+      "obs": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "sim": [
+        4,
+        3,
+        2,
+        1
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00"
+      ],
+      "expected": {
+        "count": 4,
+        "mean_error": 0.0,
+        "mean_absolute_error": 2.0,
+        "mean_square_error": 5.0,
+        "root_mean_square_error": 2.23606797749979,
+        "max_value_delta": 0.0,
+        "relative_bias": 0.0,
+        "mean_absolute_relative_error": 0.8,
+        "multiplicative_bias": 1.0,
+        "relative_median": 1.0,
+        "relative_minimum": 1.0,
+        "relative_maximum": 1.0,
+        "relative_standard_deviation": 1.0,
+        "mean_absolute_percentage_error": 114.58333333333333,
+        "symmetric_mean_absolute_percentage_error": 80.0,
+        "normalized_mean_absolute_error": 0.8,
+        "normalized_root_mean_square_error": 0.8944271909999159,
+        "root_mean_standard_deviation_ratio": 2.0,
+        "nash_sutcliffe_efficiency": -3.0,
+        "nash_sutcliffe_efficiency_normalized": 0.2,
+        "coefficient_of_variation_ratio": 1.0,
+        "pearson_correlation": -1.0,
+        "spearman_correlation": -1.0,
+        "r_squared": 1.0,
+        "kling_gupta_efficiency": -1.0,
+        "kling_gupta_efficiency_mod1": -1.0,
+        "kling_gupta_efficiency_mod2": -1.0,
+        "hits_q75": 0,
+        "misses_q75": 1,
+        "false_alarms_q75": 1,
+        "correct_negatives_q75": 2,
+        "probability_of_detection_q75": 0.0,
+        "probability_of_false_detection_q75": 0.3333333333333333,
+        "false_alarm_ratio_q75": 1.0,
+        "critical_success_index_q75": 0.0,
+        "success_ratio_q75": 0.0,
+        "frequency_bias_index_q75": 1.0,
+        "nmae_range": 0.6666666666666666,
+        "nrmse_range": 0.7453559924999299,
+        "minimum_primary": 1.0,
+        "maximum_primary": 4.0,
+        "average_primary": 2.5,
+        "sum_primary": 10.0,
+        "variance_primary": 1.25,
+        "flow_duration_curve_slope_primary": 1.2303034404042865,
+        "max_value_time_primary": "2025-10-01T01:00:00+00:00",
+        "minimum_secondary": 1.0,
+        "maximum_secondary": 4.0,
+        "average_secondary": 2.5,
+        "sum_secondary": 10.0,
+        "variance_secondary": 1.25,
+        "flow_duration_curve_slope_secondary": 1.2303034404042865,
+        "max_value_time_secondary": "2025-09-30T22:00:00+00:00",
+        "mean_crps_ensemble": 2.0,
+        "crps_fair": 2.0,
+        "mean_brier_score_q75": 0.5,
+        "max_value_time_delta": -10800.0,
+        "annual_peak_flow_bias": 0.0,
+        "annual_peak_flow_bias_wy": 0.0
+      }
+    },
+    {
+      "name": "negative_values",
+      "note": "obs sums to 0",
+      "obs": [
+        -2,
+        -1,
+        0,
+        1,
+        2
+      ],
+      "sim": [
+        -1.5,
+        -1,
+        0.5,
+        0.5,
+        2.5
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00",
+        "2025-10-01T02:00:00+00:00"
+      ],
+      "expected": {
+        "count": 5,
+        "mean_error": 0.2,
+        "mean_absolute_error": 0.4,
+        "mean_square_error": 0.2,
+        "root_mean_square_error": 0.4472135954999579,
+        "max_value_delta": 0.5,
+        "relative_bias": null,
+        "mean_absolute_relative_error": null,
+        "multiplicative_bias": null,
+        "relative_median": null,
+        "relative_minimum": 0.75,
+        "relative_maximum": 1.25,
+        "relative_standard_deviation": 0.9899494936611666,
+        "mean_absolute_percentage_error": 25.0,
+        "symmetric_mean_absolute_percentage_error": 63.492063492063494,
+        "normalized_mean_absolute_error": null,
+        "normalized_root_mean_square_error": null,
+        "root_mean_standard_deviation_ratio": 0.31622776601683794,
+        "nash_sutcliffe_efficiency": 0.9,
+        "nash_sutcliffe_efficiency_normalized": 0.9090909090909091,
+        "coefficient_of_variation_ratio": null,
+        "pearson_correlation": 0.9596449173246002,
+        "spearman_correlation": 0.9746794344808964,
+        "r_squared": 0.9209183673469388,
+        "kling_gupta_efficiency": null,
+        "kling_gupta_efficiency_mod1": null,
+        "kling_gupta_efficiency_mod2": 0.8525905519466094,
+        "hits_q75": 1,
+        "misses_q75": 1,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 3,
+        "probability_of_detection_q75": 0.5,
+        "probability_of_false_detection_q75": 0.0,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 0.5,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 0.5,
+        "nmae_range": 0.1,
+        "nrmse_range": 0.11180339887498948,
+        "minimum_primary": -2.0,
+        "maximum_primary": 2.0,
+        "average_primary": 0.0,
+        "sum_primary": 0.0,
+        "variance_primary": 2.0,
+        "flow_duration_curve_slope_primary": null,
+        "max_value_time_primary": "2025-10-01T02:00:00+00:00",
+        "minimum_secondary": -1.5,
+        "maximum_secondary": 2.5,
+        "average_secondary": 0.2,
+        "sum_secondary": 1.0,
+        "variance_secondary": 1.96,
+        "flow_duration_curve_slope_secondary": null,
+        "max_value_time_secondary": "2025-10-01T02:00:00+00:00",
+        "mean_crps_ensemble": 0.4,
+        "crps_fair": 0.4,
+        "mean_brier_score_q75": 0.2,
+        "max_value_time_delta": 0.0,
+        "annual_peak_flow_bias": 0.25,
+        "annual_peak_flow_bias_wy": 0.5
+      }
+    },
+    {
+      "name": "constant_obs",
+      "note": "obs has zero variance: NSE, r, KGE undefined",
+      "obs": [
+        5,
+        5,
+        5
+      ],
+      "sim": [
+        4,
+        5,
+        6
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00"
+      ],
+      "expected": {
+        "count": 3,
+        "mean_error": 0.0,
+        "mean_absolute_error": 0.6666666666666666,
+        "mean_square_error": 0.6666666666666666,
+        "root_mean_square_error": 0.816496580927726,
+        "max_value_delta": 1.0,
+        "relative_bias": 0.0,
+        "mean_absolute_relative_error": 0.13333333333333333,
+        "multiplicative_bias": 1.0,
+        "relative_median": 1.0,
+        "relative_minimum": 0.8,
+        "relative_maximum": 1.2,
+        "relative_standard_deviation": null,
+        "mean_absolute_percentage_error": 13.333333333333334,
+        "symmetric_mean_absolute_percentage_error": 13.468013468013469,
+        "normalized_mean_absolute_error": 0.13333333333333333,
+        "normalized_root_mean_square_error": 0.16329931618554522,
+        "root_mean_standard_deviation_ratio": null,
+        "nash_sutcliffe_efficiency": null,
+        "nash_sutcliffe_efficiency_normalized": null,
+        "coefficient_of_variation_ratio": null,
+        "pearson_correlation": null,
+        "spearman_correlation": null,
+        "r_squared": null,
+        "kling_gupta_efficiency": null,
+        "kling_gupta_efficiency_mod1": null,
+        "kling_gupta_efficiency_mod2": null,
+        "hits_q75": 2,
+        "misses_q75": 1,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 0,
+        "probability_of_detection_q75": 0.6666666666666666,
+        "probability_of_false_detection_q75": null,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 0.6666666666666666,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 0.6666666666666666,
+        "nmae_range": null,
+        "nrmse_range": null,
+        "minimum_primary": 5.0,
+        "maximum_primary": 5.0,
+        "average_primary": 5.0,
+        "sum_primary": 15.0,
+        "variance_primary": 0.0,
+        "flow_duration_curve_slope_primary": 0.0,
+        "max_value_time_primary": "2025-09-30T22:00:00+00:00",
+        "minimum_secondary": 4.0,
+        "maximum_secondary": 6.0,
+        "average_secondary": 5.0,
+        "sum_secondary": 15.0,
+        "variance_secondary": 0.6666666666666666,
+        "flow_duration_curve_slope_secondary": 0.5515153353536456,
+        "max_value_time_secondary": "2025-10-01T00:00:00+00:00",
+        "mean_crps_ensemble": 0.6666666666666666,
+        "crps_fair": 0.6666666666666666,
+        "mean_brier_score_q75": 0.3333333333333333,
+        "max_value_time_delta": 7200.0,
+        "annual_peak_flow_bias": 0.2,
+        "annual_peak_flow_bias_wy": 0.1
+      }
+    },
+    {
+      "name": "constant_sim",
+      "note": "sim has zero variance: r and KGE undefined",
+      "obs": [
+        1,
+        2,
+        3
+      ],
+      "sim": [
+        2,
+        2,
+        2
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00"
+      ],
+      "expected": {
+        "count": 3,
+        "mean_error": 0.0,
+        "mean_absolute_error": 0.6666666666666666,
+        "mean_square_error": 0.6666666666666666,
+        "root_mean_square_error": 0.816496580927726,
+        "max_value_delta": -1.0,
+        "relative_bias": 0.0,
+        "mean_absolute_relative_error": 0.3333333333333333,
+        "multiplicative_bias": 1.0,
+        "relative_median": 1.0,
+        "relative_minimum": 2.0,
+        "relative_maximum": 0.6666666666666666,
+        "relative_standard_deviation": 0.0,
+        "mean_absolute_percentage_error": 44.44444444444444,
+        "symmetric_mean_absolute_percentage_error": 35.55555555555556,
+        "normalized_mean_absolute_error": 0.3333333333333333,
+        "normalized_root_mean_square_error": 0.408248290463863,
+        "root_mean_standard_deviation_ratio": 1.0,
+        "nash_sutcliffe_efficiency": 0.0,
+        "nash_sutcliffe_efficiency_normalized": 0.5,
+        "coefficient_of_variation_ratio": 0.0,
+        "pearson_correlation": null,
+        "spearman_correlation": null,
+        "r_squared": null,
+        "kling_gupta_efficiency": null,
+        "kling_gupta_efficiency_mod1": null,
+        "kling_gupta_efficiency_mod2": null,
+        "hits_q75": 0,
+        "misses_q75": 1,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 2,
+        "probability_of_detection_q75": 0.0,
+        "probability_of_false_detection_q75": 0.0,
+        "false_alarm_ratio_q75": null,
+        "critical_success_index_q75": 0.0,
+        "success_ratio_q75": null,
+        "frequency_bias_index_q75": 0.0,
+        "nmae_range": 0.3333333333333333,
+        "nrmse_range": 0.408248290463863,
+        "minimum_primary": 1.0,
+        "maximum_primary": 3.0,
+        "average_primary": 2.0,
+        "sum_primary": 6.0,
+        "variance_primary": 0.6666666666666666,
+        "flow_duration_curve_slope_primary": 1.2303034404042865,
+        "max_value_time_primary": "2025-10-01T00:00:00+00:00",
+        "minimum_secondary": 2.0,
+        "maximum_secondary": 2.0,
+        "average_secondary": 2.0,
+        "sum_secondary": 6.0,
+        "variance_secondary": 0.0,
+        "flow_duration_curve_slope_secondary": 0.0,
+        "max_value_time_secondary": "2025-09-30T22:00:00+00:00",
+        "mean_crps_ensemble": 0.6666666666666666,
+        "crps_fair": 0.6666666666666666,
+        "mean_brier_score_q75": 0.3333333333333333,
+        "max_value_time_delta": -7200.0,
+        "annual_peak_flow_bias": -0.3333333333333333,
+        "annual_peak_flow_bias_wy": -0.2
+      }
+    },
+    {
+      "name": "single_pair",
+      "note": "n = 1: variance-based metrics undefined",
+      "obs": [
+        3
+      ],
+      "sim": [
+        4
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00"
+      ],
+      "expected": {
+        "count": 1,
+        "mean_error": 1.0,
+        "mean_absolute_error": 1.0,
+        "mean_square_error": 1.0,
+        "root_mean_square_error": 1.0,
+        "max_value_delta": 1.0,
+        "relative_bias": 0.3333333333333333,
+        "mean_absolute_relative_error": 0.3333333333333333,
+        "multiplicative_bias": 1.3333333333333333,
+        "relative_median": 1.3337574321641688,
+        "relative_minimum": 1.3333333333333333,
+        "relative_maximum": 1.3333333333333333,
+        "relative_standard_deviation": null,
+        "mean_absolute_percentage_error": 33.333333333333336,
+        "symmetric_mean_absolute_percentage_error": 28.571428571428573,
+        "normalized_mean_absolute_error": 0.3333333333333333,
+        "normalized_root_mean_square_error": 0.3333333333333333,
+        "root_mean_standard_deviation_ratio": null,
+        "nash_sutcliffe_efficiency": null,
+        "nash_sutcliffe_efficiency_normalized": null,
+        "coefficient_of_variation_ratio": null,
+        "pearson_correlation": null,
+        "spearman_correlation": null,
+        "r_squared": null,
+        "kling_gupta_efficiency": null,
+        "kling_gupta_efficiency_mod1": null,
+        "kling_gupta_efficiency_mod2": null,
+        "hits_q75": 1,
+        "misses_q75": 0,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 0,
+        "probability_of_detection_q75": 1.0,
+        "probability_of_false_detection_q75": null,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 1.0,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 1.0,
+        "nmae_range": null,
+        "nrmse_range": null,
+        "minimum_primary": 3.0,
+        "maximum_primary": 3.0,
+        "average_primary": 3.0,
+        "sum_primary": 3.0,
+        "variance_primary": 0.0,
+        "flow_duration_curve_slope_primary": 0.0,
+        "max_value_time_primary": "2025-09-30T22:00:00+00:00",
+        "minimum_secondary": 4.0,
+        "maximum_secondary": 4.0,
+        "average_secondary": 4.0,
+        "sum_secondary": 4.0,
+        "variance_secondary": 0.0,
+        "flow_duration_curve_slope_secondary": 0.0,
+        "max_value_time_secondary": "2025-09-30T22:00:00+00:00",
+        "mean_crps_ensemble": 1.0,
+        "crps_fair": 1.0,
+        "mean_brier_score_q75": 0.0,
+        "max_value_time_delta": 0.0,
+        "annual_peak_flow_bias": 0.3333333333333333,
+        "annual_peak_flow_bias_wy": 0.3333333333333333
+      }
+    },
+    {
+      "name": "ties",
+      "note": "tied values: Spearman uses average ranks; even count: median of the middle two",
+      "obs": [
+        1,
+        2,
+        2,
+        3,
+        3,
+        3
+      ],
+      "sim": [
+        1,
+        1,
+        2,
+        2,
+        3,
+        4
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00",
+        "2025-10-01T02:00:00+00:00",
+        "2025-10-01T03:00:00+00:00"
+      ],
+      "expected": {
+        "count": 6,
+        "mean_error": -0.16666666666666666,
+        "mean_absolute_error": 0.5,
+        "mean_square_error": 0.5,
+        "root_mean_square_error": 0.7071067811865476,
+        "max_value_delta": 1.0,
+        "relative_bias": -0.07142857142857142,
+        "mean_absolute_relative_error": 0.21428571428571427,
+        "multiplicative_bias": 0.9285714285714286,
+        "relative_median": 0.7997432006774686,
+        "relative_minimum": 1.0,
+        "relative_maximum": 1.3333333333333333,
+        "relative_standard_deviation": 1.4317821063276353,
+        "mean_absolute_percentage_error": 19.444444444444443,
+        "symmetric_mean_absolute_percentage_error": 22.53968253968254,
+        "normalized_mean_absolute_error": 0.21428571428571427,
+        "normalized_root_mean_square_error": 0.30304576336566325,
+        "root_mean_standard_deviation_ratio": 0.9486832980505138,
+        "nash_sutcliffe_efficiency": 0.1,
+        "nash_sutcliffe_efficiency_normalized": 0.5263157894736842,
+        "coefficient_of_variation_ratio": 1.5419191914297612,
+        "pearson_correlation": 0.768273325346536,
+        "spearman_correlation": 0.8263342440128467,
+        "r_squared": 0.5902439024390244,
+        "kling_gupta_efficiency": 0.5047878435387433,
+        "kling_gupta_efficiency_mod1": 0.40630335810098694,
+        "kling_gupta_efficiency_mod2": 0.4613600097554196,
+        "hits_q75": 2,
+        "misses_q75": 1,
+        "false_alarms_q75": 0,
+        "correct_negatives_q75": 3,
+        "probability_of_detection_q75": 0.6666666666666666,
+        "probability_of_false_detection_q75": 0.0,
+        "false_alarm_ratio_q75": 0.0,
+        "critical_success_index_q75": 0.6666666666666666,
+        "success_ratio_q75": 1.0,
+        "frequency_bias_index_q75": 0.6666666666666666,
+        "nmae_range": 0.25,
+        "nrmse_range": 0.3535533905932738,
+        "minimum_primary": 1.0,
+        "maximum_primary": 3.0,
+        "average_primary": 2.3333333333333335,
+        "sum_primary": 14.0,
+        "variance_primary": 0.5555555555555556,
+        "flow_duration_curve_slope_primary": 1.2303034404042865,
+        "max_value_time_primary": "2025-10-01T01:00:00+00:00",
+        "minimum_secondary": 1.0,
+        "maximum_secondary": 4.0,
+        "average_secondary": 2.1666666666666665,
+        "sum_secondary": 13.0,
+        "variance_secondary": 1.1388888888888888,
+        "flow_duration_curve_slope_secondary": 1.2303034404042865,
+        "max_value_time_secondary": "2025-10-01T03:00:00+00:00",
+        "mean_crps_ensemble": 0.5,
+        "crps_fair": 0.5,
+        "mean_brier_score_q75": 0.16666666666666666,
+        "max_value_time_delta": 7200.0,
+        "annual_peak_flow_bias": 0.3333333333333333,
+        "annual_peak_flow_bias_wy": 0.0
+      }
+    },
+    {
+      "name": "zeros",
+      "note": "zero obs: MAPE uses the non-zero pairs; a pair with both 0 is 0 error in sMAPE",
+      "obs": [
+        0,
+        1,
+        2,
+        0
+      ],
+      "sim": [
+        0,
+        2,
+        1,
+        1
+      ],
+      "times": [
+        "2025-09-30T22:00:00+00:00",
+        "2025-09-30T23:00:00+00:00",
+        "2025-10-01T00:00:00+00:00",
+        "2025-10-01T01:00:00+00:00"
+      ],
+      "expected": {
+        "count": 4,
+        "mean_error": 0.25,
+        "mean_absolute_error": 0.75,
+        "mean_square_error": 0.75,
+        "root_mean_square_error": 0.8660254037844386,
+        "max_value_delta": 0.0,
+        "relative_bias": 0.3333333333333333,
+        "mean_absolute_relative_error": 1.0,
+        "multiplicative_bias": 1.3333333333333333,
+        "relative_median": 2.0,
+        "relative_minimum": null,
+        "relative_maximum": 1.0,
+        "relative_standard_deviation": 0.8528028654224418,
+        "mean_absolute_percentage_error": 75.0,
+        "symmetric_mean_absolute_percentage_error": 83.33333333333333,
+        "normalized_mean_absolute_error": 1.0,
+        "normalized_root_mean_square_error": 1.1547005383792515,
+        "root_mean_standard_deviation_ratio": 1.044465935734187,
+        "nash_sutcliffe_efficiency": -0.09090909090909091,
+        "nash_sutcliffe_efficiency_normalized": 0.4782608695652174,
+        "coefficient_of_variation_ratio": 0.6396021490668313,
+        "pearson_correlation": 0.4264014327112209,
+        "spearman_correlation": 0.5,
+        "r_squared": 0.18181818181818182,
+        "kling_gupta_efficiency": 0.3204461581782537,
+        "kling_gupta_efficiency_mod1": 0.2450079215885125,
+        "kling_gupta_efficiency_mod2": 0.3354765589291264,
+        "hits_q75": 0,
+        "misses_q75": 1,
+        "false_alarms_q75": 1,
+        "correct_negatives_q75": 2,
+        "probability_of_detection_q75": 0.0,
+        "probability_of_false_detection_q75": 0.3333333333333333,
+        "false_alarm_ratio_q75": 1.0,
+        "critical_success_index_q75": 0.0,
+        "success_ratio_q75": 0.0,
+        "frequency_bias_index_q75": 1.0,
+        "nmae_range": 0.375,
+        "nrmse_range": 0.4330127018922193,
+        "minimum_primary": 0.0,
+        "maximum_primary": 2.0,
+        "average_primary": 0.75,
+        "sum_primary": 3.0,
+        "variance_primary": 0.6875,
+        "flow_duration_curve_slope_primary": null,
+        "max_value_time_primary": "2025-10-01T00:00:00+00:00",
+        "minimum_secondary": 0.0,
+        "maximum_secondary": 2.0,
+        "average_secondary": 1.0,
+        "sum_secondary": 4.0,
+        "variance_secondary": 0.5,
+        "flow_duration_curve_slope_secondary": 0.0,
+        "max_value_time_secondary": "2025-09-30T23:00:00+00:00",
+        "mean_crps_ensemble": 0.75,
+        "crps_fair": 0.75,
+        "mean_brier_score_q75": 0.5,
+        "max_value_time_delta": -3600.0,
+        "annual_peak_flow_bias": 0.0,
+        "annual_peak_flow_bias_wy": 0.0
+      }
+    }
+  ],
+  "probabilistic": {
+    "description": "Ensemble and quantile forecasts in long format (one row per member or quantile; rows of a case share obs). Exact values, checked against scoringrules.",
+    "ensemble": {
+      "rows": [
+        {
+          "case": 0,
+          "obs": 3,
+          "pred": 1
+        },
+        {
+          "case": 0,
+          "obs": 3,
+          "pred": 2
+        },
+        {
+          "case": 0,
+          "obs": 3,
+          "pred": 5
+        },
+        {
+          "case": 1,
+          "obs": 10,
+          "pred": 8
+        },
+        {
+          "case": 1,
+          "obs": 10,
+          "pred": 9
+        },
+        {
+          "case": 1,
+          "obs": 10,
+          "pred": 11
+        },
+        {
+          "case": 1,
+          "obs": 10,
+          "pred": 12
+        },
+        {
+          "case": 2,
+          "obs": 0,
+          "pred": 0
+        },
+        {
+          "case": 2,
+          "obs": 0,
+          "pred": 0
+        },
+        {
+          "case": 2,
+          "obs": 0,
+          "pred": 1
+        },
+        {
+          "case": 2,
+          "obs": 0,
+          "pred": 2
+        },
+        {
+          "case": 2,
+          "obs": 0,
+          "pred": 4
+        },
+        {
+          "case": 3,
+          "obs": 7,
+          "pred": 2
+        },
+        {
+          "case": 3,
+          "obs": 7,
+          "pred": 3
+        },
+        {
+          "case": 3,
+          "obs": 7,
+          "pred": 4
+        }
+      ],
+      "metric_specs": [
+        "count",
+        "mean_crps_ensemble",
+        {
+          "name": "mean_crps_ensemble",
+          "estimator": "fair",
+          "as": "crps_fair"
+        },
+        {
+          "name": "mean_brier_score",
+          "threshold": {
+            "value": 3,
+            "unit": "m"
+          }
+        },
+        "ensemble_spread",
+        "ensemble_mean_root_mean_square_error",
+        "spread_skill_ratio",
+        "rank_outlier_fraction",
+        "rank_histogram_reliability",
+        {
+          "name": "rank_frequency",
+          "rank": 0,
+          "as": "rank_0"
+        },
+        {
+          "name": "rank_frequency",
+          "rank": 1,
+          "as": "rank_1"
+        },
+        {
+          "name": "rank_frequency",
+          "rank": 2,
+          "as": "rank_2"
+        },
+        {
+          "name": "rank_frequency",
+          "rank": 3,
+          "as": "rank_3"
+        }
+      ],
+      "expected": {
+        "count": 15,
+        "mean_crps_ensemble": 1.3895833333333334,
+        "crps_fair": 1.1,
+        "mean_brier_score": 0.14888888888888888,
+        "ensemble_spread": 1.6931233465600393,
+        "ensemble_mean_root_mean_square_error": 2.125506475590648,
+        "spread_skill_ratio": 0.9000054653602432,
+        "rank_outlier_fraction": 0.25,
+        "rank_0": 0.0,
+        "rank_1": 0.25,
+        "rank_2": 0.5,
+        "rank_3": 0.25,
+        "rank_histogram_reliability": null
+      }
+    },
+    "ensemble_equal": {
+      "rows": [
+        {
+          "case": 0,
+          "obs": 0,
+          "pred": 1
+        },
+        {
+          "case": 0,
+          "obs": 0,
+          "pred": 2
+        },
+        {
+          "case": 0,
+          "obs": 0,
+          "pred": 3
+        },
+        {
+          "case": 1,
+          "obs": 5,
+          "pred": 1
+        },
+        {
+          "case": 1,
+          "obs": 5,
+          "pred": 2
+        },
+        {
+          "case": 1,
+          "obs": 5,
+          "pred": 3
+        },
+        {
+          "case": 2,
+          "obs": 2,
+          "pred": 1
+        },
+        {
+          "case": 2,
+          "obs": 2,
+          "pred": 3
+        },
+        {
+          "case": 2,
+          "obs": 2,
+          "pred": 4
+        },
+        {
+          "case": 3,
+          "obs": 3,
+          "pred": 1
+        },
+        {
+          "case": 3,
+          "obs": 3,
+          "pred": 2
+        },
+        {
+          "case": 3,
+          "obs": 3,
+          "pred": 4
+        },
+        {
+          "case": 4,
+          "obs": 2,
+          "pred": 1
+        },
+        {
+          "case": 4,
+          "obs": 2,
+          "pred": 2
+        },
+        {
+          "case": 4,
+          "obs": 2,
+          "pred": 2
+        },
+        {
+          "case": 5,
+          "obs": 2,
+          "pred": 2
+        },
+        {
+          "case": 5,
+          "obs": 2,
+          "pred": 3
+        },
+        {
+          "case": 5,
+          "obs": 2,
+          "pred": 4
+        }
+      ],
+      "metric_specs": [
+        "count",
+        "mean_crps_ensemble",
+        "ensemble_spread",
+        "ensemble_mean_root_mean_square_error",
+        "spread_skill_ratio",
+        "rank_outlier_fraction",
+        "rank_histogram_reliability",
+        {
+          "name": "rank_frequency",
+          "rank": 0,
+          "as": "rank_0"
+        },
+        {
+          "name": "rank_frequency",
+          "rank": 1,
+          "as": "rank_1"
+        },
+        {
+          "name": "rank_frequency",
+          "rank": 2,
+          "as": "rank_2"
+        },
+        {
+          "name": "rank_frequency",
+          "rank": 3,
+          "as": "rank_3"
+        }
+      ],
+      "expected": {
+        "count": 18,
+        "mean_crps_ensemble": 1.0185185185185186,
+        "ensemble_spread": 1.1547005383792515,
+        "ensemble_mean_root_mean_square_error": 1.5811388300841898,
+        "spread_skill_ratio": 0.8432740427115678,
+        "rank_outlier_fraction": 0.5,
+        "rank_0": 0.3333333333333333,
+        "rank_1": 0.16666666666666666,
+        "rank_2": 0.3333333333333333,
+        "rank_3": 0.16666666666666666,
+        "rank_histogram_reliability": 0.3333333333333333
+      }
+    },
+    "quantile": {
+      "rows": [
+        {
+          "case": 0,
+          "obs": 5.0,
+          "pred": 2.0,
+          "quantile": 0.05
+        },
+        {
+          "case": 0,
+          "obs": 5.0,
+          "pred": 4.0,
+          "quantile": 0.25
+        },
+        {
+          "case": 0,
+          "obs": 5.0,
+          "pred": 5.0,
+          "quantile": 0.5
+        },
+        {
+          "case": 0,
+          "obs": 5.0,
+          "pred": 6.0,
+          "quantile": 0.75
+        },
+        {
+          "case": 0,
+          "obs": 5.0,
+          "pred": 8.0,
+          "quantile": 0.95
+        },
+        {
+          "case": 1,
+          "obs": 1.0,
+          "pred": 2.0,
+          "quantile": 0.05
+        },
+        {
+          "case": 1,
+          "obs": 1.0,
+          "pred": 3.0,
+          "quantile": 0.25
+        },
+        {
+          "case": 1,
+          "obs": 1.0,
+          "pred": 4.0,
+          "quantile": 0.5
+        },
+        {
+          "case": 1,
+          "obs": 1.0,
+          "pred": 5.0,
+          "quantile": 0.75
+        },
+        {
+          "case": 1,
+          "obs": 1.0,
+          "pred": 7.0,
+          "quantile": 0.95
+        },
+        {
+          "case": 2,
+          "obs": 9.0,
+          "pred": 1.0,
+          "quantile": 0.05
+        },
+        {
+          "case": 2,
+          "obs": 9.0,
+          "pred": 2.0,
+          "quantile": 0.25
+        },
+        {
+          "case": 2,
+          "obs": 9.0,
+          "pred": 3.0,
+          "quantile": 0.5
+        },
+        {
+          "case": 2,
+          "obs": 9.0,
+          "pred": 4.0,
+          "quantile": 0.75
+        },
+        {
+          "case": 2,
+          "obs": 9.0,
+          "pred": 6.0,
+          "quantile": 0.95
+        },
+        {
+          "case": 3,
+          "obs": 4.5,
+          "pred": 3.0,
+          "quantile": 0.05
+        },
+        {
+          "case": 3,
+          "obs": 4.5,
+          "pred": 4.0,
+          "quantile": 0.25
+        },
+        {
+          "case": 3,
+          "obs": 4.5,
+          "pred": 4.5,
+          "quantile": 0.5
+        },
+        {
+          "case": 3,
+          "obs": 4.5,
+          "pred": 5.0,
+          "quantile": 0.75
+        },
+        {
+          "case": 3,
+          "obs": 4.5,
+          "pred": 6.0,
+          "quantile": 0.95
+        }
+      ],
+      "metric_specs": [
+        "count",
+        "mean_pinball_loss",
+        "interval_coverage",
+        "mean_interval_width",
+        "mean_interval_score",
+        {
+          "name": "interval_coverage",
+          "interval": [
+            0.25,
+            0.75
+          ],
+          "as": "coverage_50"
+        },
+        {
+          "name": "mean_interval_score",
+          "interval": [
+            0.25,
+            0.75
+          ],
+          "as": "winkler_50"
+        }
+      ],
+      "expected": {
+        "count": 20,
+        "mean_pinball_loss": 0.91,
+        "interval_coverage": 0.5,
+        "mean_interval_width": 4.75,
+        "mean_interval_score": 24.75,
+        "coverage_50": 0.5,
+        "winkler_50": 8.75
+      }
+    }
+  },
+  "generated_with": {
+    "hydroeval": "0.1.0",
+    "HydroErr": "2.0.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "pandas": "3.0.6",
+    "scoringrules": "0.11.0"
+  }
+}
