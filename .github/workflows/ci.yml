@@ -35,3 +35,21 @@ jobs:
         run: uv run mypy
       - name: Test
         run: uv run pytest
+
+  conformance:
+    # The shared cases (teehr-shared-eval-spec conformance/cases), run with the engine.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: RTIInternational/teehr-shared-eval-spec
+          path: teehr-shared-eval-spec
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.13"
+      - name: Install
+        run: uv sync --locked --all-extras
+      - name: Run the cases
+        run: uv run python -m teehr_core.conformance teehr-shared-eval-spec/conformance/cases
