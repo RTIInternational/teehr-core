@@ -69,3 +69,9 @@ def test_compare_tables() -> None:
     assert compare_tables(a, off, ["k"], 1e-12) == ["v at {'k': 'x'}: 1.000001, expected 1.0"]
     assert compare_tables(a, off, ["k"], 1e-5) == []
     assert "columns differ" in compare_tables(a, a.drop_columns(["n"]), ["k"], 1e-12)[0]
+
+
+def test_no_cases_yet(tmp_path: Path) -> None:
+    """A spec repo without cases (or their unit table yet) runs nothing."""
+    (tmp_path / "conformance" / "cases").mkdir(parents=True)
+    assert run_cases(tmp_path / "conformance" / "cases") == []

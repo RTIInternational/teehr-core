@@ -224,10 +224,9 @@ def run_cases(
     ``standards/periods.csv``, found from ``cases``.
     """
     cases = Path(cases)
-    root = cases.parent.parent
+    paths = sorted(p for p in cases.iterdir() if (p / "case.yaml").exists())
+    if not paths:
+        return []
     units = units or load_units(cases.parent / "units.csv")
-    periods = periods or load_periods(root / "standards" / "periods.csv")
-    return [
-        check_case(Case.load(path), evaluate, units, periods)
-        for path in sorted(p for p in cases.iterdir() if (p / "case.yaml").exists())
-    ]
+    periods = periods or load_periods(cases.parent.parent / "standards" / "periods.csv")
+    return [check_case(Case.load(path), evaluate, units, periods) for path in paths]
