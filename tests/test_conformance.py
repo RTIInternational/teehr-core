@@ -33,7 +33,7 @@ def cases(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 def test_the_engine_passes_every_case(cases: Path) -> None:
     outcomes = run_cases(cases)
-    assert len(outcomes) >= 6
+    assert len(outcomes) >= 7
     assert [o.problems for o in outcomes if not o.passed] == []
 
 
@@ -49,7 +49,7 @@ def test_a_wrong_result_fails_its_case(cases: Path) -> None:
         return table
 
     failed = {o.case for o in run_cases(cases, off_by_a_bit) if not o.passed}
-    assert failed == {"hydro_metrics", "energy_metrics", "undefined_results"}
+    assert failed == {"hydro_metrics", "energy_metrics", "undefined_results", "empty_series"}
 
 
 def test_accepting_a_refused_spec_fails(cases: Path) -> None:

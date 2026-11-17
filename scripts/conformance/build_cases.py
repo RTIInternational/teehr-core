@@ -199,6 +199,24 @@ def build(out: Path) -> None:
     table = _expect(path, units, periods)
     assert table["hits_m3s"].equals(table["hits_cfs"]) and table["fa_m3s"].equals(table["fa_cfs"])
 
+    empty = _small_inputs()
+    obs = _series([*OBS, *(("sim_empty", h, 2.0 + h) for h in range(3))])
+    sim = _series([*SIM, *(("sim_empty", h, None) for h in range(3))])
+    empty["obs"]["table"], empty["sim"]["table"] = obs, sim
+    empty["xw"]["table"] = pa.table(
+        {"left_key": [*KEYS, "sim_empty"], "right_key": [*KEYS, "sim_empty"]}
+    )
+    path = _write_case(
+        out,
+        "empty_series",
+        "A group exists only if it has at least one complete pair: a series whose secondary "
+        "values are all missing gets no row (not a row with count 0).",
+        _small_spec("empty", ["count", "root_mean_square_error"]),
+        empty,
+    )
+    table = _expect(path, units, periods)
+    assert "sim_empty" not in table["primary_series_key"].to_pylist()
+
     _write_case(
         out,
         "reject_bare_threshold",
