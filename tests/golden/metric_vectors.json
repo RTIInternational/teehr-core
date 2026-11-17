@@ -51,6 +51,7 @@
     "critical_success_index": "hits / (hits + misses + false_alarms); null if 0/0",
     "success_ratio": "hits / (hits + false_alarms); null if 0/0",
     "frequency_bias_index": "(hits + false_alarms) / (hits + misses); null if 0/0",
+    "proportion_correct": "(hits + correct_negatives) / count; null if 0/0",
     "minimum": "min of one side",
     "maximum": "max of one side",
     "average": "mean of one side",
@@ -59,7 +60,9 @@
     "flow_duration_curve_slope": "(ln Q(0.33) - ln Q(0.66)) / 0.33, Q(e) = quantile 1 - e (type 2) of quantile-sketch values (0.1% buckets); null if <= 0",
     "max_value_time": "earliest time of the maximum of one side",
     "max_value_time_delta": "seconds from earliest time of max(obs) to earliest time of max(sim)",
-    "annual_peak_flow_bias": "sum of (annual max(sim) - annual max(obs)) / sum of annual max(obs); years start in year_start_month (default 1)"
+    "annual_peak_flow_bias": "sum of (annual max(sim) - annual max(obs)) / sum of annual max(obs); years start in year_start_month (default 1)",
+    "center_of_timing": "mean over years of sum(q_d d) / sum(q_d): q_d the day's mean of one side (UTC days), d the day of the year from 1 (years start in year_start_month, default 10); days with q_d <= 0 left out; a year with fewer than (1 - missing_day_threshold) x its length days present left out (default 0.1); null if no year is left",
+    "standard_deviation_of_timing": "mean over years of sqrt(sum(q_d (d - c)^2) / (sum(q_d) (n - 1) / n)), c the year's center of timing wrapped into 1..length, n its days with flow (needs n > 1); days and years as center_of_timing"
   },
   "metric_specs": [
     "count",
@@ -160,6 +163,13 @@
       "as": "frequency_bias_index_q75"
     },
     {
+      "name": "proportion_correct",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "proportion_correct_q75"
+    },
+    {
       "name": "normalized_mean_absolute_error",
       "normalize_by": "range_primary",
       "as": "nmae_range"
@@ -250,6 +260,60 @@
       "name": "annual_peak_flow_bias",
       "year_start_month": 10,
       "as": "annual_peak_flow_bias_wy"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "primary"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "secondary"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "primary"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "secondary"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "primary",
+      "missing_day_threshold": 1.0,
+      "as": "center_of_timing_primary_any"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "secondary",
+      "missing_day_threshold": 1.0,
+      "as": "center_of_timing_secondary_any"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "primary",
+      "missing_day_threshold": 1.0,
+      "as": "standard_deviation_of_timing_primary_any"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "secondary",
+      "missing_day_threshold": 1.0,
+      "as": "standard_deviation_of_timing_secondary_any"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "primary",
+      "year_start_month": 1,
+      "missing_day_threshold": 1.0,
+      "as": "center_of_timing_calendar"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "primary",
+      "year_start_month": 1,
+      "missing_day_threshold": 1.0,
+      "as": "standard_deviation_of_timing_calendar"
     }
   ],
   "cases": [
@@ -315,6 +379,7 @@
         "critical_success_index_q75": 0.5,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.5,
+        "proportion_correct_q75": 0.8,
         "nmae_range": 0.175,
         "nrmse_range": 0.18540496217739158,
         "minimum_primary": 1.0,
@@ -336,7 +401,17 @@
         "mean_brier_score_q75": 0.2,
         "max_value_time_delta": 0.0,
         "annual_peak_flow_bias": 0.2,
-        "annual_peak_flow_bias_wy": 0.07142857142857142
+        "annual_peak_flow_bias_wy": 0.07142857142857142,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.72727272727275,
+        "standard_deviation_of_timing_calendar": 0.6298366572977736
       }
     },
     {
@@ -398,6 +473,7 @@
         "critical_success_index_q75": 1.0,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 1.0,
         "nmae_range": 0.0,
         "nrmse_range": 0.0,
         "minimum_primary": 2.0,
@@ -419,7 +495,17 @@
         "mean_brier_score_q75": 0.0,
         "max_value_time_delta": 0.0,
         "annual_peak_flow_bias": 0.0,
-        "annual_peak_flow_bias_wy": 0.0
+        "annual_peak_flow_bias_wy": 0.0,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.7,
+        "standard_deviation_of_timing_calendar": 0.648074069840786
       }
     },
     {
@@ -481,6 +567,7 @@
         "critical_success_index_q75": 1.0,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 1.0,
         "nmae_range": 0.06666666666666667,
         "nrmse_range": 0.06666666666666667,
         "minimum_primary": 10.0,
@@ -502,7 +589,17 @@
         "mean_brier_score_q75": 0.0,
         "max_value_time_delta": 0.0,
         "annual_peak_flow_bias": 0.05,
-        "annual_peak_flow_bias_wy": 0.06666666666666667
+        "annual_peak_flow_bias_wy": 0.06666666666666667,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.7,
+        "standard_deviation_of_timing_calendar": 0.648074069840786
       }
     },
     {
@@ -564,6 +661,7 @@
         "critical_success_index_q75": 0.3333333333333333,
         "success_ratio_q75": 0.3333333333333333,
         "frequency_bias_index_q75": 3.0,
+        "proportion_correct_q75": 0.5,
         "nmae_range": 0.8333333333333334,
         "nrmse_range": 0.9128709291752769,
         "minimum_primary": 1.0,
@@ -585,7 +683,17 @@
         "mean_brier_score_q75": 0.5,
         "max_value_time_delta": 0.0,
         "annual_peak_flow_bias": 1.0,
-        "annual_peak_flow_bias_wy": 1.0
+        "annual_peak_flow_bias_wy": 1.0,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.7,
+        "standard_deviation_of_timing_calendar": 0.648074069840786
       }
     },
     {
@@ -647,6 +755,7 @@
         "critical_success_index_q75": 0.0,
         "success_ratio_q75": 0.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 0.5,
         "nmae_range": 0.6666666666666666,
         "nrmse_range": 0.7453559924999299,
         "minimum_primary": 1.0,
@@ -668,7 +777,17 @@
         "mean_brier_score_q75": 0.5,
         "max_value_time_delta": -10800.0,
         "annual_peak_flow_bias": 0.0,
-        "annual_peak_flow_bias_wy": 0.0
+        "annual_peak_flow_bias_wy": 0.0,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.7,
+        "standard_deviation_of_timing_calendar": 0.648074069840786
       }
     },
     {
@@ -733,6 +852,7 @@
         "critical_success_index_q75": 0.5,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.5,
+        "proportion_correct_q75": 0.8,
         "nmae_range": 0.1,
         "nrmse_range": 0.11180339887498948,
         "minimum_primary": -2.0,
@@ -754,7 +874,17 @@
         "mean_brier_score_q75": 0.2,
         "max_value_time_delta": 0.0,
         "annual_peak_flow_bias": 0.25,
-        "annual_peak_flow_bias_wy": 0.5
+        "annual_peak_flow_bias_wy": 0.5,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 1.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 1.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 274.0,
+        "standard_deviation_of_timing_calendar": null
       }
     },
     {
@@ -813,6 +943,7 @@
         "critical_success_index_q75": 0.6666666666666666,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.6666666666666666,
+        "proportion_correct_q75": 0.6666666666666666,
         "nmae_range": null,
         "nrmse_range": null,
         "minimum_primary": 5.0,
@@ -834,7 +965,17 @@
         "mean_brier_score_q75": 0.3333333333333333,
         "max_value_time_delta": 7200.0,
         "annual_peak_flow_bias": 0.2,
-        "annual_peak_flow_bias_wy": 0.1
+        "annual_peak_flow_bias_wy": 0.1,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.5,
+        "standard_deviation_of_timing_calendar": 0.7071067811865476
       }
     },
     {
@@ -893,6 +1034,7 @@
         "critical_success_index_q75": 0.0,
         "success_ratio_q75": null,
         "frequency_bias_index_q75": 0.0,
+        "proportion_correct_q75": 0.6666666666666666,
         "nmae_range": 0.3333333333333333,
         "nrmse_range": 0.408248290463863,
         "minimum_primary": 1.0,
@@ -914,7 +1056,17 @@
         "mean_brier_score_q75": 0.3333333333333333,
         "max_value_time_delta": -7200.0,
         "annual_peak_flow_bias": -0.3333333333333333,
-        "annual_peak_flow_bias_wy": -0.2
+        "annual_peak_flow_bias_wy": -0.2,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.6666666666667,
+        "standard_deviation_of_timing_calendar": 0.6666666666666666
       }
     },
     {
@@ -967,6 +1119,7 @@
         "critical_success_index_q75": 1.0,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 1.0,
         "nmae_range": null,
         "nrmse_range": null,
         "minimum_primary": 3.0,
@@ -988,7 +1141,17 @@
         "mean_brier_score_q75": 0.0,
         "max_value_time_delta": 0.0,
         "annual_peak_flow_bias": 0.3333333333333333,
-        "annual_peak_flow_bias_wy": 0.3333333333333333
+        "annual_peak_flow_bias_wy": 0.3333333333333333,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 365.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 365.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.0,
+        "standard_deviation_of_timing_calendar": null
       }
     },
     {
@@ -1056,6 +1219,7 @@
         "critical_success_index_q75": 0.6666666666666666,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.6666666666666666,
+        "proportion_correct_q75": 0.8333333333333334,
         "nmae_range": 0.25,
         "nrmse_range": 0.3535533905932738,
         "minimum_primary": 1.0,
@@ -1077,7 +1241,17 @@
         "mean_brier_score_q75": 0.16666666666666666,
         "max_value_time_delta": 7200.0,
         "annual_peak_flow_bias": 0.3333333333333333,
-        "annual_peak_flow_bias_wy": 0.0
+        "annual_peak_flow_bias_wy": 0.0,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.6470588235294,
+        "standard_deviation_of_timing_calendar": 0.6758308995927093
       }
     },
     {
@@ -1139,6 +1313,7 @@
         "critical_success_index_q75": 0.0,
         "success_ratio_q75": 0.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 0.5,
         "nmae_range": 0.375,
         "nrmse_range": 0.4330127018922193,
         "minimum_primary": 0.0,
@@ -1160,7 +1335,17 @@
         "mean_brier_score_q75": 0.5,
         "max_value_time_delta": -3600.0,
         "annual_peak_flow_bias": 0.0,
-        "annual_peak_flow_bias_wy": 0.0
+        "annual_peak_flow_bias_wy": 0.0,
+        "center_of_timing_primary": null,
+        "standard_deviation_of_timing_primary": null,
+        "center_of_timing_secondary": null,
+        "standard_deviation_of_timing_secondary": null,
+        "center_of_timing_primary_any": 183.0,
+        "standard_deviation_of_timing_primary_any": null,
+        "center_of_timing_secondary_any": 183.0,
+        "standard_deviation_of_timing_secondary_any": null,
+        "center_of_timing_calendar": 273.6666666666667,
+        "standard_deviation_of_timing_calendar": 0.6666666666666666
       }
     }
   ],
@@ -1597,9 +1782,9 @@
   "generated_with": {
     "hydroeval": "0.1.0",
     "HydroErr": "2.0.0",
-    "numpy": "2.5.4",
+    "numpy": "2.5.5",
     "scipy": "1.18.1",
-    "pandas": "3.0.6",
-    "scoringrules": "0.11.0"
+    "pandas": "3.1.1",
+    "scoringrules": "0.12.0"
   }
 }

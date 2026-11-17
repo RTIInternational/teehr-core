@@ -17,6 +17,7 @@ import numpy as np
 import numpy.typing as npt
 
 from teehr_core.metrics.stats import FloatArray, GroupStats, IntArray
+from teehr_core.metrics.timing import timing
 
 __all__ = [
     "ALIASES",
@@ -77,8 +78,13 @@ class Params:
     normalize_value: float | None = None
     normalize_column: str | None = None
     side: str = "obs"
-    year_start_month: int = 1
+    #: The month a year starts in; None = the metric's default (1, or 10 for timing).
+    year_start_month: int | None = None
+    #: Timing signatures: leave out a year with fewer than (1 - this) of its days.
+    missing_day_threshold: float = 0.1
     exceedance: tuple[float, float] = (0.33, 0.66)
+    #: flow_duration_curve_slope: the log form (True) or the linear slope.
+    log: bool = True
     #: CRPS estimator: ``standard`` or ``fair``.
     estimator: str = "standard"
     #: Central prediction interval as two quantile levels.
@@ -285,7 +291,7 @@ def _year_index(seconds: FloatArray, start_month: int) -> npt.NDArray[np.int64]:
 
 def _annual_peak_relative_bias(s: GroupStats, p: Params) -> FloatArray:
     def compute() -> FloatArray:
-        years = _year_index(s.column("value_time"), p.year_start_month)
+        years = _year_index(s.column("value_time"), p.year_start_month or 1)
         key = s.gid * 100_000 + (years - years.min() if years.size else years)
         uniq, sub = np.unique(key, return_inverse=True)
         parent = (uniq // 100_000).astype(np.int64)
@@ -293,12 +299,14 @@ def _annual_peak_relative_bias(s: GroupStats, p: Params) -> FloatArray:
         peaks_obs, peaks_pred = fine.gmax(fine.obs), fine.gmax(fine.pred)
         return _div(s.to_parent(peaks_pred - peaks_obs, parent), s.to_parent(peaks_obs, parent))
 
-    return s.cached(f"annual_peak_relative_bias|{p.year_start_month}", compute)
+    return s.cached(f"annual_peak_relative_bias|{p.year_start_month or 1}", compute)
 
 
 def _fdc_slope(s: GroupStats, p: Params) -> FloatArray:
     lo, hi = p.exceedance
     q_lo, q_hi = s.sketch_quantile(p.side, 1 - lo), s.sketch_quantile(p.side, 1 - hi)
+    if not p.log:
+        return np.asarray((q_lo - q_hi) / (hi - lo), dtype=np.float64)
     with np.errstate(invalid="ignore", divide="ignore"):
         slope = (np.log(q_lo) - np.log(q_hi)) / (hi - lo)
     return np.where((q_lo > 0) & (q_hi > 0), slope, np.nan)
@@ -629,6 +637,17 @@ _PARAMETERIZED = (
         False,
     ),
     _contingency_metric(
+        "proportion_correct",
+        _score(
+            lambda t: _div(
+                t["hits"] + t["correct_negatives"],
+                t["hits"] + t["false_alarms"] + t["misses"] + t["correct_negatives"],
+            )
+        ),
+        "Proportion correct (accuracy): (hits + correct_negatives) / count.",
+        False,
+    ),
+    _contingency_metric(
         "frequency_bias_index",
         _score(lambda t: _div(t["hits"] + t["false_alarms"], t["hits"] + t["misses"])),
         "Frequency bias: (hits + false_alarms) / (hits + misses); 1 = as many predicted "
@@ -671,13 +690,37 @@ _PARAMETERIZED = (
         output="timestamp",
     ),
     _signature(
+        "center_of_timing",
+        lambda s, p: timing(
+            s, p.side, p.year_start_month or 10, p.missing_day_threshold, spread=False
+        ),
+        "Center of timing: the flow-weighted mean day of the year (day 1 = the first day "
+        "of year_start_month, default 10), from daily means, averaged over the years; a "
+        "year with fewer than 1 - missing_day_threshold (default 0.1) of its days, and "
+        "days without flow, are left out. Needs the pairs.",
+        params=frozenset({"side", "year_start_month", "missing_day_threshold"}),
+        needs=_TIME,
+    ),
+    _signature(
+        "standard_deviation_of_timing",
+        lambda s, p: timing(
+            s, p.side, p.year_start_month or 10, p.missing_day_threshold, spread=True
+        ),
+        "Standard deviation of timing: the flow-weighted spread of the days around the "
+        "center of timing, sqrt(sum q (d - CT)^2 / (sum q (n - 1) / n)) over the n days "
+        "with flow, per year, averaged over the years (as center_of_timing).",
+        params=frozenset({"side", "year_start_month", "missing_day_threshold"}),
+        needs=_TIME,
+    ),
+    _signature(
         "flow_duration_curve_slope",
         _fdc_slope,
         "Flow duration curve slope: (ln Q(e1) - ln Q(e2)) / (e2 - e1), Q(e) = value "
         "exceeded a fraction e of the time, exceedance [e1, e2] default [0.33, 0.66]; "
-        "null if either value <= 0. Quantiles come from quantile sketches (within 0.1%), "
-        "so the metric merges from state.",
-        params=frozenset({"side", "exceedance"}),
+        "null if either value <= 0. With log false, the linear slope (Q(e1) - Q(e2)) / "
+        "(e2 - e1). Quantiles come from quantile sketches (within 0.1%), so the metric "
+        "merges from state.",
+        params=frozenset({"side", "exceedance", "log"}),
     ),
 )
 
@@ -886,6 +929,7 @@ ALIASES: dict[str, str] = {
     "annual_peak_relative_bias": "annual_peak_flow_bias",
     "mean_value": "average",
     "csi": "critical_success_index",
+    "accuracy": "proportion_correct",
     "ensemble_mean_rmse": "ensemble_mean_root_mean_square_error",
     "far": "false_alarm_ratio",
     "fdc_slope": "flow_duration_curve_slope",

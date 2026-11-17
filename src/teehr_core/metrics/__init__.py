@@ -108,6 +108,8 @@ def evaluate(
     quantiles: float | ArrayLike | None = None,
     scale: float | ArrayLike | None = None,
     kge_weights: tuple[float, float, float] | None = None,
+    log: bool | None = None,
+    missing_day_threshold: float | None = None,
 ) -> dict[str, Value]:
     """Compute several metrics at once, sharing intermediate results between them.
 
@@ -157,6 +159,10 @@ def evaluate(
         columns["quantile"] = np.broadcast_to(np.asarray(quantiles, dtype=np.float64), o.shape)
     if kge_weights is not None:
         params["kge_weights"] = tuple(float(w) for w in kge_weights)
+    if log is not None:
+        params["log"] = bool(log)
+    if missing_day_threshold is not None:
+        params["missing_day_threshold"] = float(missing_day_threshold)
     if scale is not None:
         columns["_scale"] = np.broadcast_to(np.asarray(scale, dtype=np.float64), o.shape)
         params["scale_column"] = "_scale"
@@ -596,6 +602,17 @@ def success_ratio(obs: ArrayLike, pred: ArrayLike, *, threshold: float | ArrayLi
     return value
 
 
+def proportion_correct(
+    obs: ArrayLike, pred: ArrayLike, *, threshold: float | ArrayLike
+) -> float | None:
+    """Compute proportion correct (accuracy).
+
+    (hits + correct_negatives) / count. An event is a value >= threshold.
+    """
+    value: float | None = _one("proportion_correct", obs, pred, threshold=threshold)
+    return value
+
+
 def frequency_bias_index(
     obs: ArrayLike, pred: ArrayLike, *, threshold: float | ArrayLike
 ) -> float | None:
@@ -688,15 +705,16 @@ def max_value_time(values: ArrayLike, times: TimesLike) -> datetime | None:
 
 
 def flow_duration_curve_slope(
-    values: ArrayLike, *, exceedance: tuple[float, float] = (0.33, 0.66)
+    values: ArrayLike, *, exceedance: tuple[float, float] = (0.33, 0.66), log: bool = True
 ) -> float | None:
     """Compute the fdc slope of one series.
 
     Flow duration curve slope: (ln Q(e1) - ln Q(e2)) / (e2 - e1), Q(e) = value exceeded
     a fraction e of the time, exceedance [e1, e2] default [0.33, 0.66]; null if either
-    value <= 0. Of obs or pred (side, default obs); column <name>_<side>.
+    value <= 0. With ``log=False``, the linear slope (Q(e1) - Q(e2)) / (e2 - e1). Of obs
+    or pred (side, default obs); column <name>_<side>.
     """
-    value: float | None = _one("fdc_slope", values, values, exceedance=exceedance)
+    value: float | None = _one("fdc_slope", values, values, exceedance=exceedance, log=log)
     return value
 
 
@@ -958,6 +976,7 @@ __all__ = [
     "pofd",
     "probability_of_detection",
     "probability_of_false_detection",
+    "proportion_correct",
     "r_squared",
     "rank_histogram",
     "rank_histogram_reliability",
