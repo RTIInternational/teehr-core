@@ -1,6 +1,6 @@
 [project]
 name = "teehr-core"
-version = "0.0.1"
+version = "0.1.0"
 description = "Dependency-light core of TEEHR: data model, metric kernels, metric state, bootstrap and the evaluation spec engine."
 readme = "README.md"
 license = "MIT"
