@@ -221,15 +221,15 @@ def test_gumboot_needs_enough_years() -> None:
     assert np.all(np.isnan(got[req]))
 
 
-@pytest.mark.skip(reason="needs the spec engine (teehr-core step 6)")
 def test_water_years_and_gumboot_through_the_engine() -> None:
     from datetime import UTC, datetime, timedelta
 
     import pyarrow as pa
-    from verirace import engine
-    from verirace.contract import TIMESTAMP
-    from verirace.engine import Catalog, Dataset
-    from verirace.engine.duckdb_backend import _years
+
+    from teehr_core import engine
+    from teehr_core.engine import Catalog, Dataset
+    from teehr_core.engine.duckdb_backend import _years
+    from teehr_core.model.contract import TIMESTAMP
 
     t = pa.array(
         [datetime(2020, 9, 30, 23, tzinfo=UTC), datetime(2020, 10, 1, tzinfo=UTC)], TIMESTAMP

@@ -9,9 +9,11 @@ def test_version() -> None:
 
 
 def test_import_is_light() -> None:
-    """The core imports without Spark, DuckDB or pandas."""
+    """The core imports without Spark, DuckDB or pandas (only the engine needs DuckDB)."""
     code = (
-        "import sys, teehr_core; "
+        "import sys, teehr_core, teehr_core.metrics, teehr_core.metrics.state, "
+        "teehr_core.spec, teehr_core.model.units, teehr_core.model.contract, "
+        "teehr_core.model.periods, teehr_core.model.dataset_types; "
         "heavy = {'pyspark', 'duckdb', 'pandas'} & set(sys.modules); "
         "print(','.join(sorted(heavy)))"
     )
