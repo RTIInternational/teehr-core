@@ -20,7 +20,7 @@ from teehr_core.metrics.state import (
     mergeable,
     sketches_from,
 )
-from tests.spec_shim import to_request
+from teehr_core.spec.models import MetricSpec
 
 #: The platform evaluations' metrics (deploy/flows/evaluations): incremental runs need them.
 PLATFORM = [
@@ -209,7 +209,8 @@ def test_transformed_metrics_merge_too(engine: str) -> None:
 
 
 def _request(**spec: object) -> MetricRequest:
-    return to_request(dict(spec))
+    m = MetricSpec(**spec)  # type: ignore[arg-type]
+    return MetricRequest(m.name, m.transform, m.to_params())
 
 
 #: Metrics kept in state as additive sums of their own: counts at fixed thresholds and
