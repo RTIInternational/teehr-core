@@ -109,6 +109,7 @@ def evaluate(
     scale: float | ArrayLike | None = None,
     kge_weights: tuple[float, float, float] | None = None,
     log: bool | None = None,
+    missing_day_threshold: float | None = None,
 ) -> dict[str, Value]:
     """Compute several metrics at once, sharing intermediate results between them.
 
@@ -160,6 +161,8 @@ def evaluate(
         params["kge_weights"] = tuple(float(w) for w in kge_weights)
     if log is not None:
         params["log"] = bool(log)
+    if missing_day_threshold is not None:
+        params["missing_day_threshold"] = float(missing_day_threshold)
     if scale is not None:
         columns["_scale"] = np.broadcast_to(np.asarray(scale, dtype=np.float64), o.shape)
         params["scale_column"] = "_scale"

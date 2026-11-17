@@ -307,6 +307,60 @@
       "name": "annual_peak_flow_bias",
       "year_start_month": 10,
       "as": "annual_peak_flow_bias_wy"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "primary"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "secondary"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "primary"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "secondary"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "primary",
+      "missing_day_threshold": 1.0,
+      "as": "center_of_timing_primary_any"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "secondary",
+      "missing_day_threshold": 1.0,
+      "as": "center_of_timing_secondary_any"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "primary",
+      "missing_day_threshold": 1.0,
+      "as": "standard_deviation_of_timing_primary_any"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "secondary",
+      "missing_day_threshold": 1.0,
+      "as": "standard_deviation_of_timing_secondary_any"
+    },
+    {
+      "name": "center_of_timing",
+      "side": "primary",
+      "year_start_month": 1,
+      "missing_day_threshold": 1.0,
+      "as": "center_of_timing_calendar"
+    },
+    {
+      "name": "standard_deviation_of_timing",
+      "side": "primary",
+      "year_start_month": 1,
+      "missing_day_threshold": 1.0,
+      "as": "standard_deviation_of_timing_calendar"
     }
   ],
   "evaluations": {
@@ -381,7 +435,17 @@
             "mean_brier_score_q75": 0.6041666666666666,
             "max_value_time_delta": 21600.0,
             "annual_peak_flow_bias": 0.2721260451036833,
-            "annual_peak_flow_bias_wy": 0.2721260451036833
+            "annual_peak_flow_bias_wy": 0.2721260451036833,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.956025764507586,
+            "standard_deviation_of_timing_primary_any": 0.9925549133055518,
+            "center_of_timing_secondary_any": 7.009751908375989,
+            "standard_deviation_of_timing_secondary_any": 0.9951148163613339,
+            "center_of_timing_calendar": 279.95602576450756,
+            "standard_deviation_of_timing_calendar": 0.9925549133055519
           }
         },
         {
@@ -449,7 +513,17 @@
             "mean_brier_score_q75": 0.6388888888888888,
             "max_value_time_delta": 28800.0,
             "annual_peak_flow_bias": 0.21147260757050898,
-            "annual_peak_flow_bias_wy": 0.21147260757050898
+            "annual_peak_flow_bias_wy": 0.21147260757050898,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.486214605067065,
+            "standard_deviation_of_timing_primary_any": 0.7068379770308653,
+            "center_of_timing_secondary_any": 7.50830752891389,
+            "standard_deviation_of_timing_secondary_any": 0.7070091724487666,
+            "center_of_timing_calendar": 280.4862146050671,
+            "standard_deviation_of_timing_calendar": 0.7068379770308653
           }
         },
         {
@@ -517,7 +591,17 @@
             "mean_brier_score_q75": 0.3958333333333333,
             "max_value_time_delta": 39600.0,
             "annual_peak_flow_bias": 0.02623815529308166,
-            "annual_peak_flow_bias_wy": 0.02623815529308166
+            "annual_peak_flow_bias_wy": 0.02623815529308166,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.901711075398057,
+            "standard_deviation_of_timing_primary_any": 1.0025692534551378,
+            "center_of_timing_secondary_any": 6.92007760973537,
+            "standard_deviation_of_timing_secondary_any": 0.9997980770319238,
+            "center_of_timing_calendar": 279.90171107539805,
+            "standard_deviation_of_timing_calendar": 1.0025692534551378
           }
         },
         {
@@ -585,7 +669,17 @@
             "mean_brier_score_q75": 0.6388888888888888,
             "max_value_time_delta": 3600.0,
             "annual_peak_flow_bias": 0.09154421972082319,
-            "annual_peak_flow_bias_wy": 0.09154421972082319
+            "annual_peak_flow_bias_wy": 0.09154421972082319,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.486913157661777,
+            "standard_deviation_of_timing_primary_any": 0.7068645337794428,
+            "center_of_timing_secondary_any": 7.482475355969332,
+            "standard_deviation_of_timing_secondary_any": 0.7066723241384204,
+            "center_of_timing_calendar": 280.4869131576618,
+            "standard_deviation_of_timing_calendar": 0.7068645337794428
           }
         },
         {
@@ -653,7 +747,17 @@
             "mean_brier_score_q75": 0.75,
             "max_value_time_delta": 165600.0,
             "annual_peak_flow_bias": 0.301579139594656,
-            "annual_peak_flow_bias_wy": 0.301579139594656
+            "annual_peak_flow_bias_wy": 0.301579139594656,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.971179403186644,
+            "standard_deviation_of_timing_primary_any": 1.0017891184921284,
+            "center_of_timing_secondary_any": 7.031225341948382,
+            "standard_deviation_of_timing_secondary_any": 0.9938005261249375,
+            "center_of_timing_calendar": 279.9711794031866,
+            "standard_deviation_of_timing_calendar": 1.0017891184921284
           }
         },
         {
@@ -721,7 +825,17 @@
             "mean_brier_score_q75": 0.6944444444444444,
             "max_value_time_delta": 100800.0,
             "annual_peak_flow_bias": 0.3878526300181216,
-            "annual_peak_flow_bias_wy": 0.3878526300181216
+            "annual_peak_flow_bias_wy": 0.3878526300181216,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.49200695309674,
+            "standard_deviation_of_timing_primary_any": 0.7070164230075597,
+            "center_of_timing_secondary_any": 7.525368941392568,
+            "standard_deviation_of_timing_secondary_any": 0.7061960305929514,
+            "center_of_timing_calendar": 280.49200695309673,
+            "standard_deviation_of_timing_calendar": 0.7070164230075597
           }
         }
       ]
@@ -799,7 +913,17 @@
             "mean_brier_score_q75": 0.8,
             "max_value_time_delta": 14400.0,
             "annual_peak_flow_bias": 0.07499524748205859,
-            "annual_peak_flow_bias_wy": 0.07499524748205859
+            "annual_peak_flow_bias_wy": 0.07499524748205859,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -868,7 +992,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 7200.0,
             "annual_peak_flow_bias": 0.2721260451036833,
-            "annual_peak_flow_bias_wy": 0.2721260451036833
+            "annual_peak_flow_bias_wy": 0.2721260451036833,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -937,7 +1071,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": -3600.0,
             "annual_peak_flow_bias": 0.2939865164385122,
-            "annual_peak_flow_bias_wy": 0.2939865164385122
+            "annual_peak_flow_bias_wy": 0.2939865164385122,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1006,7 +1150,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": -18000.0,
             "annual_peak_flow_bias": 0.24239787999696286,
-            "annual_peak_flow_bias_wy": 0.24239787999696286
+            "annual_peak_flow_bias_wy": 0.24239787999696286,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1075,7 +1229,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 3600.0,
             "annual_peak_flow_bias": 0.2328210214390932,
-            "annual_peak_flow_bias_wy": 0.2328210214390932
+            "annual_peak_flow_bias_wy": 0.2328210214390932,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1144,7 +1308,17 @@
             "mean_brier_score_q75": 0.3333333333333333,
             "max_value_time_delta": -18000.0,
             "annual_peak_flow_bias": 0.3303293056633376,
-            "annual_peak_flow_bias_wy": 0.3303293056633376
+            "annual_peak_flow_bias_wy": 0.3303293056633376,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1213,7 +1387,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": -7200.0,
             "annual_peak_flow_bias": 0.2254388596340687,
-            "annual_peak_flow_bias_wy": 0.2254388596340687
+            "annual_peak_flow_bias_wy": 0.2254388596340687,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1282,7 +1466,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.45052604190206136,
-            "annual_peak_flow_bias_wy": 0.45052604190206136
+            "annual_peak_flow_bias_wy": 0.45052604190206136,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 8.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 8.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 281.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1351,7 +1545,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 10800.0,
             "annual_peak_flow_bias": 0.25716220360701186,
-            "annual_peak_flow_bias_wy": 0.25716220360701186
+            "annual_peak_flow_bias_wy": 0.25716220360701186,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1420,7 +1624,17 @@
             "mean_brier_score_q75": 0.4,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.12807413096239417,
-            "annual_peak_flow_bias_wy": 0.12807413096239417
+            "annual_peak_flow_bias_wy": 0.12807413096239417,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1489,7 +1703,17 @@
             "mean_brier_score_q75": 0.3333333333333333,
             "max_value_time_delta": -14400.0,
             "annual_peak_flow_bias": 0.30750397280475666,
-            "annual_peak_flow_bias_wy": 0.30750397280475666
+            "annual_peak_flow_bias_wy": 0.30750397280475666,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.497854077253219,
+            "standard_deviation_of_timing_primary_any": 0.7071002687251149,
+            "center_of_timing_secondary_any": 7.490900181996361,
+            "standard_deviation_of_timing_secondary_any": 0.7069896651469535,
+            "center_of_timing_calendar": 280.4978540772532,
+            "standard_deviation_of_timing_calendar": 0.7071002687251149
           }
         },
         {
@@ -1558,7 +1782,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.23029763915048318,
-            "annual_peak_flow_bias_wy": 0.23029763915048318
+            "annual_peak_flow_bias_wy": 0.23029763915048318,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.467692307692308,
+            "standard_deviation_of_timing_primary_any": 0.705629099481805,
+            "center_of_timing_secondary_any": 7.49031712473573,
+            "standard_deviation_of_timing_secondary_any": 0.7069741748135028,
+            "center_of_timing_calendar": 280.4676923076923,
+            "standard_deviation_of_timing_calendar": 0.7056290994818049
           }
         },
         {
@@ -1627,7 +1861,17 @@
             "mean_brier_score_q75": 0.5833333333333334,
             "max_value_time_delta": 18000.0,
             "annual_peak_flow_bias": 0.20907839293104138,
-            "annual_peak_flow_bias_wy": 0.20907839293104138
+            "annual_peak_flow_bias_wy": 0.20907839293104138,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1696,7 +1940,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.0005822014107545919,
-            "annual_peak_flow_bias_wy": 0.0005822014107545919
+            "annual_peak_flow_bias_wy": 0.0005822014107545919,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 5.999999999999999,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 5.999999999999999,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1765,7 +2019,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.12741656496986437,
-            "annual_peak_flow_bias_wy": 0.12741656496986437
+            "annual_peak_flow_bias_wy": 0.12741656496986437,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1834,7 +2098,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.17244690894719014,
-            "annual_peak_flow_bias_wy": 0.17244690894719014
+            "annual_peak_flow_bias_wy": 0.17244690894719014,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1903,7 +2177,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": -10800.0,
             "annual_peak_flow_bias": 0.22539961021374957,
-            "annual_peak_flow_bias_wy": 0.22539961021374957
+            "annual_peak_flow_bias_wy": 0.22539961021374957,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.000000000000001,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -1972,7 +2256,17 @@
             "mean_brier_score_q75": 0.3333333333333333,
             "max_value_time_delta": -3600.0,
             "annual_peak_flow_bias": 0.13875633995096262,
-            "annual_peak_flow_bias_wy": 0.13875633995096262
+            "annual_peak_flow_bias_wy": 0.13875633995096262,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.000000000000001,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2041,7 +2335,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.15888932455484972,
-            "annual_peak_flow_bias_wy": 0.15888932455484972
+            "annual_peak_flow_bias_wy": 0.15888932455484972,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2110,7 +2414,17 @@
             "mean_brier_score_q75": 0.6666666666666666,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.16431383436887817,
-            "annual_peak_flow_bias_wy": 0.16431383436887817
+            "annual_peak_flow_bias_wy": 0.16431383436887817,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.999999999999999,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2179,7 +2493,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.18168305234482793,
-            "annual_peak_flow_bias_wy": 0.18168305234482793
+            "annual_peak_flow_bias_wy": 0.18168305234482793,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 8.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 8.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 281.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2248,7 +2572,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 18000.0,
             "annual_peak_flow_bias": 0.08500715691972695,
-            "annual_peak_flow_bias_wy": 0.08500715691972695
+            "annual_peak_flow_bias_wy": 0.08500715691972695,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2317,7 +2651,17 @@
             "mean_brier_score_q75": 0.2,
             "max_value_time_delta": 7200.0,
             "annual_peak_flow_bias": 0.074878083289856,
-            "annual_peak_flow_bias_wy": 0.074878083289856
+            "annual_peak_flow_bias_wy": 0.074878083289856,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.000000000000001,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2386,7 +2730,17 @@
             "mean_brier_score_q75": 0.5833333333333334,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.15483016755115483,
-            "annual_peak_flow_bias_wy": 0.15483016755115483
+            "annual_peak_flow_bias_wy": 0.15483016755115483,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.4874749498997994,
+            "standard_deviation_of_timing_primary_any": 0.7068848889599882,
+            "center_of_timing_secondary_any": 7.475450980392158,
+            "standard_deviation_of_timing_secondary_any": 0.706253984960501,
+            "center_of_timing_calendar": 280.4874749498998,
+            "standard_deviation_of_timing_calendar": 0.7068848889599882
           }
         },
         {
@@ -2455,7 +2809,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.1578929860175792,
-            "annual_peak_flow_bias_wy": 0.1578929860175792
+            "annual_peak_flow_bias_wy": 0.1578929860175792,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.5,
+            "standard_deviation_of_timing_primary_any": 0.7071067811865476,
+            "center_of_timing_secondary_any": 7.476789168278529,
+            "standard_deviation_of_timing_secondary_any": 0.706344473031109,
+            "center_of_timing_calendar": 280.5,
+            "standard_deviation_of_timing_calendar": 0.7071067811865476
           }
         },
         {
@@ -2524,7 +2888,17 @@
             "mean_brier_score_q75": 0.5833333333333334,
             "max_value_time_delta": 3600.0,
             "annual_peak_flow_bias": 0.09154421972082319,
-            "annual_peak_flow_bias_wy": 0.09154421972082319
+            "annual_peak_flow_bias_wy": 0.09154421972082319,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2593,7 +2967,17 @@
             "mean_brier_score_q75": 0.6,
             "max_value_time_delta": 14400.0,
             "annual_peak_flow_bias": 0.028929145265600826,
-            "annual_peak_flow_bias_wy": 0.028929145265600826
+            "annual_peak_flow_bias_wy": 0.028929145265600826,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2662,7 +3046,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 18000.0,
             "annual_peak_flow_bias": 0.3043856871553291,
-            "annual_peak_flow_bias_wy": 0.3043856871553291
+            "annual_peak_flow_bias_wy": 0.3043856871553291,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2731,7 +3125,17 @@
             "mean_brier_score_q75": 0.3333333333333333,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.31926461134341266,
-            "annual_peak_flow_bias_wy": 0.31926461134341266
+            "annual_peak_flow_bias_wy": 0.31926461134341266,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2800,7 +3204,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 14400.0,
             "annual_peak_flow_bias": 0.35556100941869007,
-            "annual_peak_flow_bias_wy": 0.35556100941869007
+            "annual_peak_flow_bias_wy": 0.35556100941869007,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.000000000000001,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2869,7 +3283,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 14400.0,
             "annual_peak_flow_bias": 0.3771329372357839,
-            "annual_peak_flow_bias_wy": 0.3771329372357839
+            "annual_peak_flow_bias_wy": 0.3771329372357839,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -2938,7 +3362,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 18000.0,
             "annual_peak_flow_bias": 0.41116265882076536,
-            "annual_peak_flow_bias_wy": 0.41116265882076536
+            "annual_peak_flow_bias_wy": 0.41116265882076536,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -3007,7 +3441,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 18000.0,
             "annual_peak_flow_bias": 0.4420754621985598,
-            "annual_peak_flow_bias_wy": 0.4420754621985598
+            "annual_peak_flow_bias_wy": 0.4420754621985598,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -3076,7 +3520,17 @@
             "mean_brier_score_q75": 0.0,
             "max_value_time_delta": 0.0,
             "annual_peak_flow_bias": 0.4599155710092636,
-            "annual_peak_flow_bias_wy": 0.4599155710092636
+            "annual_peak_flow_bias_wy": 0.4599155710092636,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 8.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 8.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 281.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -3145,7 +3599,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 18000.0,
             "annual_peak_flow_bias": 0.2619896447632192,
-            "annual_peak_flow_bias_wy": 0.2619896447632192
+            "annual_peak_flow_bias_wy": 0.2619896447632192,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 6.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 6.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 279.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -3214,7 +3678,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 14400.0,
             "annual_peak_flow_bias": 0.20028640823844465,
-            "annual_peak_flow_bias_wy": 0.20028640823844465
+            "annual_peak_flow_bias_wy": 0.20028640823844465,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         },
         {
@@ -3283,7 +3757,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 61200.0,
             "annual_peak_flow_bias": 0.43821824965587597,
-            "annual_peak_flow_bias_wy": 0.43821824965587597
+            "annual_peak_flow_bias_wy": 0.43821824965587597,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.493360572012257,
+            "standard_deviation_of_timing_primary_any": 0.7070444370702531,
+            "center_of_timing_secondary_any": 7.504135683849945,
+            "standard_deviation_of_timing_secondary_any": 0.707082592232468,
+            "center_of_timing_calendar": 280.49336057201225,
+            "standard_deviation_of_timing_calendar": 0.7070444370702531
           }
         },
         {
@@ -3352,7 +3836,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 43200.0,
             "annual_peak_flow_bias": 0.44998709815077126,
-            "annual_peak_flow_bias_wy": 0.44998709815077126
+            "annual_peak_flow_bias_wy": 0.44998709815077126,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.493814432989691,
+            "standard_deviation_of_timing_primary_any": 0.7070526695526451,
+            "center_of_timing_secondary_any": 7.503622283287534,
+            "standard_deviation_of_timing_secondary_any": 0.707088225137125,
+            "center_of_timing_calendar": 280.49381443298967,
+            "standard_deviation_of_timing_calendar": 0.7070526695526451
           }
         },
         {
@@ -3421,7 +3915,17 @@
             "mean_brier_score_q75": 0.5,
             "max_value_time_delta": 61200.0,
             "annual_peak_flow_bias": 0.38060879018186106,
-            "annual_peak_flow_bias_wy": 0.38060879018186106
+            "annual_peak_flow_bias_wy": 0.38060879018186106,
+            "center_of_timing_primary": null,
+            "standard_deviation_of_timing_primary": null,
+            "center_of_timing_secondary": null,
+            "standard_deviation_of_timing_secondary": null,
+            "center_of_timing_primary_any": 7.0,
+            "standard_deviation_of_timing_primary_any": null,
+            "center_of_timing_secondary_any": 7.0,
+            "standard_deviation_of_timing_secondary_any": null,
+            "center_of_timing_calendar": 280.0,
+            "standard_deviation_of_timing_calendar": null
           }
         }
       ]

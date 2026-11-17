@@ -26,7 +26,7 @@ import json
 import math
 import statistics
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, getcontext
 from fractions import Fraction
 from importlib.metadata import version
@@ -545,6 +545,7 @@ CONTINGENCY = (
     "proportion_correct",
 )
 SIGNATURES = ("minimum", "maximum", "average", "sum", "variance", "flow_duration_curve_slope")
+TIMING = ("center_of_timing", "standard_deviation_of_timing")
 EXCEEDANCE = (Fraction("0.33"), Fraction("0.66"))
 Q75 = Fraction(3, 4)
 
@@ -575,6 +576,22 @@ VARIANT_SPECS: list[dict[str, object]] = [
         "year_start_month": 10,
         "as": "annual_peak_flow_bias_wy",
     },
+    *({"name": m, "side": side} for m in TIMING for side in ("primary", "secondary")),
+    *(
+        {"name": m, "side": side, "missing_day_threshold": 1.0, "as": f"{m}_{side}_any"}
+        for m in TIMING
+        for side in ("primary", "secondary")
+    ),
+    *(
+        {
+            "name": m,
+            "side": "primary",
+            "year_start_month": 1,
+            "missing_day_threshold": 1.0,
+            "as": f"{m}_calendar",
+        }
+        for m in TIMING
+    ),
 ]
 
 VARIANT_DEFINITIONS = {
@@ -618,6 +635,17 @@ VARIANT_DEFINITIONS = {
     "annual_peak_flow_bias": (
         "sum of (annual max(sim) - annual max(obs)) / sum of annual max(obs); years start in "
         "year_start_month (default 1)"
+    ),
+    "center_of_timing": (
+        "mean over years of sum(q_d d) / sum(q_d): q_d the day's mean of one side (UTC days), d "
+        "the day of the year from 1 (years start in year_start_month, default 10); days with "
+        "q_d <= 0 left out; a year with fewer than (1 - missing_day_threshold) x its length "
+        "days present left out (default 0.1); null if no year is left"
+    ),
+    "standard_deviation_of_timing": (
+        "mean over years of sqrt(sum(q_d (d - c)^2) / (sum(q_d) (n - 1) / n)), c the year's "
+        "center of timing wrapped into 1..length, n its days with flow (needs n > 1); days and "
+        "years as center_of_timing"
     ),
 }
 
@@ -701,6 +729,73 @@ def _annual(
     return _div(num, sum(po for po, _ in peaks.values()))
 
 
+def _month_start(index: int) -> date:
+    return date(index // 12, index % 12 + 1, 1)
+
+
+def _timing(
+    values: Sequence[Any], times: Sequence[datetime], start: int, missing: Any, spread: bool
+) -> float | None:
+    """Center of timing (or its standard deviation), exactly; see VARIANT_DEFINITIONS."""
+    days: dict[date, list[Any]] = {}
+    for v, t in zip(values, times, strict=True):
+        days.setdefault(t.astimezone(UTC).date(), []).append(v)
+    years: dict[int, list[tuple[int, Any]]] = {}
+    lengths: dict[int, int] = {}
+    for day, vs in days.items():
+        y = _year(datetime(day.year, day.month, 1), start)
+        first = _month_start(y * 12 + start - 1)
+        lengths[y] = (_month_start(y * 12 + start - 1 + 12) - first).days
+        years.setdefault(y, []).append(((day - first).days + 1, sum(vs) / len(vs)))
+    results: list[Decimal] = []
+    for y, daily in years.items():
+        if len(daily) < (1 - Fraction(missing)) * lengths[y]:
+            continue
+        flow = [(d, q) for d, q in daily if q > 0]
+        n = len(flow)
+        if n == 0 or (spread and n <= 1):
+            continue
+        total = sum(q for _, q in flow)
+        ct = sum(q * d for d, q in flow) / total
+        if not spread:
+            results.append(_dec(Fraction(ct)))
+            continue
+        ct = (ct - 1) % lengths[y] + 1
+        results.append(_sqrt(sum(q * (d - ct) ** 2 for d, q in flow) / (total * (n - 1) / n)))
+    return float(sum(results) / len(results)) if results else None
+
+
+def _timing_pd(v: np.ndarray, times: pd.Series, start: int, missing: float, spread: bool):
+    """The same with pandas resampling and offsets (an independent implementation)."""
+    daily = pd.Series(v, index=pd.DatetimeIndex(times)).resample("D").mean().dropna()
+    year_of = (daily.index - pd.DateOffset(months=start - 1)).year
+    results = []
+    for y, q in daily.groupby(year_of):
+        first = pd.Timestamp(year=y, month=start, day=1, tz="UTC")
+        length = (first + pd.DateOffset(years=1) - first).days
+        if len(q) < (1 - missing) * length:
+            continue
+        q = q[q > 0]
+        if q.empty or (spread and len(q) <= 1):
+            continue
+        d = (q.index - first).days.to_numpy() + 1
+        ct = float(np.average(d, weights=q))
+        if not spread:
+            results.append(ct)
+            continue
+        ct = (ct - 1) % length + 1
+        n = len(q)
+        results.append(math.sqrt(np.sum(q * (d - ct) ** 2) / (q.sum() * (n - 1) / n)))
+    return float(np.mean(results)) if results else None
+
+
+TIMING_VARIANTS = (  # (suffix, side, year start, missing_day_threshold)
+    *((f"_{side}", side, 10, 0.1) for side in ("primary", "secondary")),
+    *((f"_{side}_any", side, 10, 1.0) for side in ("primary", "secondary")),
+    ("_calendar", "primary", 1, 1.0),
+)
+
+
 def exact_variants(
     obs_in: Sequence[float], sim_in: Sequence[float], times: Sequence[datetime]
 ) -> dict[str, object]:
@@ -734,6 +829,10 @@ def exact_variants(
     out["max_value_time_delta"] = delta.total_seconds()
     out["annual_peak_flow_bias"] = _annual(obs, sim, times, 1)
     out["annual_peak_flow_bias_wy"] = _annual(obs, sim, times, 10)
+    for suffix, side, start, missing in TIMING_VARIANTS:
+        vals = obs if side == "primary" else sim
+        for spread, m in enumerate(TIMING):
+            out[m + suffix] = _timing(vals, times, start, missing, bool(spread))
     return out
 
 
@@ -784,6 +883,10 @@ def library_variants(o: np.ndarray, s: np.ndarray, t: pd.Series) -> dict[str, ob
         peaks = df.groupby(year)[["o", "s"]].max()
         den = peaks.o.sum()
         first[key] = None if den == 0 else float((peaks.s - peaks.o).sum() / den)
+    for suffix, side, start, missing in TIMING_VARIANTS:
+        v = o if side == "primary" else s
+        for spread, m in enumerate(TIMING):
+            first[m + suffix] = _timing_pd(v, times, start, missing, bool(spread))
 
     # pure Python (the exact implementation on floats)
     py_times = [x.to_pydatetime() for x in times]

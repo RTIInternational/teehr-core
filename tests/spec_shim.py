@@ -37,7 +37,7 @@ def to_request(spec: dict[str, Any]) -> MetricRequest:
         p["normalize_by"], p["normalize_value"] = "value", nb["value"]
     if spec.get("side") is not None:
         p["side"] = _SIDES[spec["side"]]
-    for key in ("year_start_month", "estimator", "rank"):
+    for key in ("year_start_month", "estimator", "rank", "missing_day_threshold"):
         if spec.get(key) is not None:
             p[key] = spec[key]
     for key in ("exceedance", "interval", "kge_weights"):

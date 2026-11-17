@@ -17,6 +17,7 @@ import numpy as np
 import numpy.typing as npt
 
 from teehr_core.metrics.stats import FloatArray, GroupStats, IntArray
+from teehr_core.metrics.timing import timing
 
 __all__ = [
     "ALIASES",
@@ -77,7 +78,10 @@ class Params:
     normalize_value: float | None = None
     normalize_column: str | None = None
     side: str = "obs"
-    year_start_month: int = 1
+    #: The month a year starts in; None = the metric's default (1, or 10 for timing).
+    year_start_month: int | None = None
+    #: Timing signatures: leave out a year with fewer than (1 - this) of its days.
+    missing_day_threshold: float = 0.1
     exceedance: tuple[float, float] = (0.33, 0.66)
     #: flow_duration_curve_slope: the log form (True) or the linear slope.
     log: bool = True
@@ -287,7 +291,7 @@ def _year_index(seconds: FloatArray, start_month: int) -> npt.NDArray[np.int64]:
 
 def _annual_peak_relative_bias(s: GroupStats, p: Params) -> FloatArray:
     def compute() -> FloatArray:
-        years = _year_index(s.column("value_time"), p.year_start_month)
+        years = _year_index(s.column("value_time"), p.year_start_month or 1)
         key = s.gid * 100_000 + (years - years.min() if years.size else years)
         uniq, sub = np.unique(key, return_inverse=True)
         parent = (uniq // 100_000).astype(np.int64)
@@ -295,7 +299,7 @@ def _annual_peak_relative_bias(s: GroupStats, p: Params) -> FloatArray:
         peaks_obs, peaks_pred = fine.gmax(fine.obs), fine.gmax(fine.pred)
         return _div(s.to_parent(peaks_pred - peaks_obs, parent), s.to_parent(peaks_obs, parent))
 
-    return s.cached(f"annual_peak_relative_bias|{p.year_start_month}", compute)
+    return s.cached(f"annual_peak_relative_bias|{p.year_start_month or 1}", compute)
 
 
 def _fdc_slope(s: GroupStats, p: Params) -> FloatArray:
@@ -684,6 +688,29 @@ _PARAMETERIZED = (
         params=_SIDE,
         needs=_TIME,
         output="timestamp",
+    ),
+    _signature(
+        "center_of_timing",
+        lambda s, p: timing(
+            s, p.side, p.year_start_month or 10, p.missing_day_threshold, spread=False
+        ),
+        "Center of timing: the flow-weighted mean day of the year (day 1 = the first day "
+        "of year_start_month, default 10), from daily means, averaged over the years; a "
+        "year with fewer than 1 - missing_day_threshold (default 0.1) of its days, and "
+        "days without flow, are left out. Needs the pairs.",
+        params=frozenset({"side", "year_start_month", "missing_day_threshold"}),
+        needs=_TIME,
+    ),
+    _signature(
+        "standard_deviation_of_timing",
+        lambda s, p: timing(
+            s, p.side, p.year_start_month or 10, p.missing_day_threshold, spread=True
+        ),
+        "Standard deviation of timing: the flow-weighted spread of the days around the "
+        "center of timing, sqrt(sum q (d - CT)^2 / (sum q (n - 1) / n)) over the n days "
+        "with flow, per year, averaged over the years (as center_of_timing).",
+        params=frozenset({"side", "year_start_month", "missing_day_threshold"}),
+        needs=_TIME,
     ),
     _signature(
         "flow_duration_curve_slope",
