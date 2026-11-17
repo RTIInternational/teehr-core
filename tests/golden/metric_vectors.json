@@ -51,6 +51,7 @@
     "critical_success_index": "hits / (hits + misses + false_alarms); null if 0/0",
     "success_ratio": "hits / (hits + false_alarms); null if 0/0",
     "frequency_bias_index": "(hits + false_alarms) / (hits + misses); null if 0/0",
+    "proportion_correct": "(hits + correct_negatives) / count; null if 0/0",
     "minimum": "min of one side",
     "maximum": "max of one side",
     "average": "mean of one side",
@@ -158,6 +159,13 @@
         "primary_quantile": 0.75
       },
       "as": "frequency_bias_index_q75"
+    },
+    {
+      "name": "proportion_correct",
+      "threshold": {
+        "primary_quantile": 0.75
+      },
+      "as": "proportion_correct_q75"
     },
     {
       "name": "normalized_mean_absolute_error",
@@ -315,6 +323,7 @@
         "critical_success_index_q75": 0.5,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.5,
+        "proportion_correct_q75": 0.8,
         "nmae_range": 0.175,
         "nrmse_range": 0.18540496217739158,
         "minimum_primary": 1.0,
@@ -398,6 +407,7 @@
         "critical_success_index_q75": 1.0,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 1.0,
         "nmae_range": 0.0,
         "nrmse_range": 0.0,
         "minimum_primary": 2.0,
@@ -481,6 +491,7 @@
         "critical_success_index_q75": 1.0,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 1.0,
         "nmae_range": 0.06666666666666667,
         "nrmse_range": 0.06666666666666667,
         "minimum_primary": 10.0,
@@ -564,6 +575,7 @@
         "critical_success_index_q75": 0.3333333333333333,
         "success_ratio_q75": 0.3333333333333333,
         "frequency_bias_index_q75": 3.0,
+        "proportion_correct_q75": 0.5,
         "nmae_range": 0.8333333333333334,
         "nrmse_range": 0.9128709291752769,
         "minimum_primary": 1.0,
@@ -647,6 +659,7 @@
         "critical_success_index_q75": 0.0,
         "success_ratio_q75": 0.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 0.5,
         "nmae_range": 0.6666666666666666,
         "nrmse_range": 0.7453559924999299,
         "minimum_primary": 1.0,
@@ -733,6 +746,7 @@
         "critical_success_index_q75": 0.5,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.5,
+        "proportion_correct_q75": 0.8,
         "nmae_range": 0.1,
         "nrmse_range": 0.11180339887498948,
         "minimum_primary": -2.0,
@@ -813,6 +827,7 @@
         "critical_success_index_q75": 0.6666666666666666,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.6666666666666666,
+        "proportion_correct_q75": 0.6666666666666666,
         "nmae_range": null,
         "nrmse_range": null,
         "minimum_primary": 5.0,
@@ -893,6 +908,7 @@
         "critical_success_index_q75": 0.0,
         "success_ratio_q75": null,
         "frequency_bias_index_q75": 0.0,
+        "proportion_correct_q75": 0.6666666666666666,
         "nmae_range": 0.3333333333333333,
         "nrmse_range": 0.408248290463863,
         "minimum_primary": 1.0,
@@ -967,6 +983,7 @@
         "critical_success_index_q75": 1.0,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 1.0,
         "nmae_range": null,
         "nrmse_range": null,
         "minimum_primary": 3.0,
@@ -1056,6 +1073,7 @@
         "critical_success_index_q75": 0.6666666666666666,
         "success_ratio_q75": 1.0,
         "frequency_bias_index_q75": 0.6666666666666666,
+        "proportion_correct_q75": 0.8333333333333334,
         "nmae_range": 0.25,
         "nrmse_range": 0.3535533905932738,
         "minimum_primary": 1.0,
@@ -1139,6 +1157,7 @@
         "critical_success_index_q75": 0.0,
         "success_ratio_q75": 0.0,
         "frequency_bias_index_q75": 1.0,
+        "proportion_correct_q75": 0.5,
         "nmae_range": 0.375,
         "nrmse_range": 0.4330127018922193,
         "minimum_primary": 0.0,
@@ -1597,9 +1616,9 @@
   "generated_with": {
     "hydroeval": "0.1.0",
     "HydroErr": "2.0.0",
-    "numpy": "2.5.4",
+    "numpy": "2.5.5",
     "scipy": "1.18.1",
-    "pandas": "3.0.6",
-    "scoringrules": "0.11.0"
+    "pandas": "3.1.1",
+    "scoringrules": "0.12.0"
   }
 }

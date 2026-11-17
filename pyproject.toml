@@ -34,6 +34,16 @@ dev = [
     "ruff>=0.8",
 ]
 
+# Golden values (scripts/fixtures/compute_golden.py): independent reference libraries.
+fixtures = [
+    "hydroerr>=1.24",
+    "hydroeval>=0.1",
+    "pandas>=2.3",
+    "pyyaml>=6",
+    "scipy>=1.16",
+    "scoringrules>=0.11",
+]
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
@@ -54,6 +64,9 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
+"scripts/**" = ["D"]
+# Golden values from independent implementations: long metric names in long tables.
+"scripts/fixtures/compute_golden.py" = ["D", "E501"]
 
 [tool.mypy]
 python_version = "3.12"
