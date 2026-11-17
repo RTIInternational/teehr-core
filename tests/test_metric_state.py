@@ -16,6 +16,7 @@ from teehr_core.metrics.state import (
     compute_from_state,
     group_state,
     merge_sql,
+    merge_state,
     mergeable,
     sketches_from,
 )
@@ -78,8 +79,13 @@ def _merged(
     parts: int,
     seed: int = 3,
     data: tuple[np.ndarray, ...] | None = None,
+    engine: str = "sql",
 ) -> dict[MetricRequest, np.ndarray]:
-    """Split each group's pairs by time into ``parts`` and merge their states in SQL."""
+    """Split each group's pairs by time into ``parts`` and merge their states.
+
+    ``engine``: ``sql`` (merge_sql in DuckDB), ``numpy`` (merge_state), or ``twice``
+    (merge_state on two halves of the parts, then on the two results).
+    """
     if data is None:
         obs, pred, gid, vt = _pairs()
         columns: dict[str, np.ndarray] = {}
@@ -108,19 +114,50 @@ def _merged(
             rows.append(
                 pa.table({"g": np.arange(n_groups), "part": np.full(n_groups, p), **arrays})
             )
-        table = pa.concat_tables(rows)
-        con = duckdb.connect()
-        con.register("t", table)
-        sql = merge_sql(["g"], "t", additive)
-        merged = con.execute(f"SELECT * FROM ({sql}) ORDER BY g").to_arrow_table()
-        # Nulls (groups without pairs) as NaN, as group_state gives them.
-        states[transform] = {
-            c: sketches_from(merged[c])
-            if c.startswith(SKETCH)
-            else np.asarray(merged[c].to_numpy(zero_copy_only=False), np.float64)
-            for c in [*STATE_COLUMNS, *additive]
-        }
+        if engine == "sql":
+            states[transform] = _merge_in_sql(rows, additive)
+        else:
+            if engine == "twice":
+                halves = [rows[: parts // 2], rows[parts // 2 :]]
+                rows = [
+                    pa.table({"g": np.arange(n_groups), **_as_columns(m, additive)})
+                    for m in (_merge_in_numpy(h, additive, n_groups) for h in halves if h)
+                ]
+            merged = _merge_in_numpy(rows, additive, n_groups)
+            states[transform] = {
+                c: sketches_from(v) if c.startswith(SKETCH) else v for c, v in merged.items()
+            }
     return compute_from_state(requests, states)
+
+
+def _as_columns(state: dict, additive: list[str]) -> dict[str, object]:
+    return {
+        c: pa.array(state[c], SKETCH_TYPE) if c.startswith(SKETCH) else state[c]
+        for c in [*STATE_COLUMNS, *additive]
+    }
+
+
+def _merge_in_sql(rows: list[pa.Table], additive: list[str]) -> dict:
+    con = duckdb.connect()
+    con.register("t", pa.concat_tables(rows))
+    sql = merge_sql(["g"], "t", additive)
+    merged = con.sql(f"SELECT * FROM ({sql}) ORDER BY g").to_arrow_table()
+    # Nulls (groups without pairs) as NaN, as group_state gives them.
+    return {
+        c: sketches_from(merged[c])
+        if c.startswith(SKETCH)
+        else np.asarray(merged[c].to_numpy(zero_copy_only=False), np.float64)
+        for c in [*STATE_COLUMNS, *additive]
+    }
+
+
+def _merge_in_numpy(rows: list[pa.Table], additive: list[str], n_groups: int) -> dict:
+    table = pa.concat_tables(rows)
+    state = {
+        c: table[c].to_pylist() if c.startswith(SKETCH) else table[c].to_numpy(zero_copy_only=False)
+        for c in [*STATE_COLUMNS, *additive]
+    }
+    return merge_state(state, table["g"].to_numpy(), n_groups, additive)
 
 
 def _direct(
@@ -145,23 +182,28 @@ def test_platform_metrics_are_mergeable_and_pair_metrics_are_not() -> None:
             assert not mergeable([MetricRequest(name)]), name
 
 
+ENGINES = ["sql", "numpy", "twice"]
+
+
+@pytest.mark.parametrize("engine", ENGINES)
 @pytest.mark.parametrize("parts", [1, 2, 5])
-def test_merged_state_gives_the_same_metrics(parts: int) -> None:
+def test_merged_state_gives_the_same_metrics(parts: int, engine: str) -> None:
     # On plain pairs: metrics reading forecast cases or quantiles are tested on _ensemble.
     requests = [r for r in _simple() if mergeable([r]) and METRICS[r.name].needs <= {"value_time"}]
     assert len(requests) >= 20  # most error and summary metrics
-    got, want = _merged(requests, parts), _direct(requests)
+    got, want = _merged(requests, parts, engine=engine), _direct(requests)
     for r in requests:
         np.testing.assert_allclose(got[r], want[r], rtol=1e-9, atol=1e-9, err_msg=r.name)
 
 
-def test_transformed_metrics_merge_too() -> None:
+@pytest.mark.parametrize("engine", ENGINES)
+def test_transformed_metrics_merge_too(engine: str) -> None:
     requests = [
         MetricRequest("root_mean_square_error", Transform.LOG),
         MetricRequest("nash_sutcliffe_efficiency", Transform.SQRT),
     ]
     assert mergeable(requests)
-    got, want = _merged(requests, 4), _direct(requests)
+    got, want = _merged(requests, 4, engine=engine), _direct(requests)
     for r in requests:
         np.testing.assert_allclose(got[r], want[r], rtol=1e-9, err_msg=str(r))
 
@@ -198,11 +240,13 @@ ADDITIVE_METRICS = [
 ]
 
 
+@pytest.mark.parametrize("engine", ENGINES)
 @pytest.mark.parametrize("parts", [1, 3, 7])
-def test_additive_sums_merge_exactly(parts: int) -> None:
+def test_additive_sums_merge_exactly(parts: int, engine: str) -> None:
     assert all(mergeable([r]) for r in ADDITIVE_METRICS)
     data = _ensemble()
-    got, want = _merged(ADDITIVE_METRICS, parts, data=data), _direct(ADDITIVE_METRICS, data)
+    got = _merged(ADDITIVE_METRICS, parts, data=data, engine=engine)
+    want = _direct(ADDITIVE_METRICS, data)
     for r in ADDITIVE_METRICS:
         np.testing.assert_allclose(got[r], want[r], rtol=1e-9, atol=1e-12, err_msg=r.name)
 

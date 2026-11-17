@@ -20,7 +20,8 @@ group's count per sketch bucket of obs or pred (columns ``~obs`` and ``~pred``, 
 ``{b, w}``), which merge by adding counts per bucket (:mod:`teehr_core.metrics.sketch`).
 
 An incremental run keeps one state row per group and month, recomputes only the months
-whose inputs changed, and merges all months into the group's components (:func:`merge_sql`).
+whose inputs changed, and merges all months into the group's components (:func:`merge_sql`
+in SQL, :func:`merge_state` in numpy: the same rules).
 A metric whose formula needs anything else (the pairs themselves: medians, quantiles,
 ranks, thresholds from the group's own observations) can't be computed from state;
 :func:`mergeable` tells, by trying it on state.
@@ -49,6 +50,7 @@ __all__ = [
     "compute_from_state",
     "group_state",
     "merge_sql",
+    "merge_state",
     "mergeable",
 ]
 
@@ -229,6 +231,76 @@ def merge_sql(keys: Sequence[str], source: str, additive: Sequence[str] = ()) ->
         joins.append(f"LEFT JOIN ({lists}) s{i} ON {match}")
         cols.append(f's{i}."{c}"')
     return f"SELECT m.*, {', '.join(cols)} FROM ({merged}) m {' '.join(joins)}"
+
+
+def merge_state(
+    state: dict[str, Any], gid: IntArray, n_groups: int, additive: Sequence[str] = ()
+) -> dict[str, Any]:
+    """Merge state rows into one per group, as :func:`merge_sql` does, in numpy.
+
+    ``state`` holds one entry per state row for each of :data:`STATE_COLUMNS` and
+    ``additive`` (:func:`additive_columns`), e.g. :func:`group_state`'s output for several
+    parts concatenated; ``gid`` gives each row's group. Returns the groups' state in
+    :func:`group_state`'s form, so merges can be merged again. For engines without SQL
+    (Spark aggregates, a merge of states computed elsewhere).
+    """
+    gid = np.asarray(gid, np.int64)
+    n = np.asarray(state["n"], np.float64)
+    has = n > 0
+
+    def total(column: str) -> FloatArray:
+        values = np.asarray(state[column], np.float64)
+        return np.bincount(gid, weights=np.where(has, values, 0.0), minlength=n_groups)
+
+    out: dict[str, Any] = {c: total(c) for c in (*_SUMS, *additive) if not c.startswith(SKETCH)}
+    for c in _EXTREMES:
+        values = np.asarray(state[c], np.float64)
+        low = c.startswith("min")
+        merged = np.full(n_groups, np.inf if low else -np.inf)
+        (np.minimum if low else np.maximum).at(merged, gid[has], values[has])
+        out[c] = np.where(np.isinf(merged), np.nan, merged)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        dev = {
+            side: np.asarray(state[f"sum_{side}"], np.float64) / np.where(has, n, 1.0)
+            - (out[f"sum_{side}"] / out["n"])[gid]
+            for side in ("obs", "pred")
+        }
+    corrections = {
+        "ss_obs": n * dev["obs"] ** 2,
+        "ss_pred": n * dev["pred"] ** 2,
+        "sp_obs_pred": n * dev["obs"] * dev["pred"],
+    }
+    for c in _CENTERED:
+        values = np.asarray(state[c], np.float64) + corrections[c]
+        out[c] = np.bincount(gid, weights=np.where(has, values, 0.0), minlength=n_groups)
+    for side in ("obs", "pred"):
+        peak = np.asarray(state[f"max_{side}"], np.float64)
+        first = has & (peak == out[f"max_{side}"][gid])
+        merged = np.full(n_groups, np.inf)
+        np.minimum.at(merged, gid[first], np.asarray(state[f"time_max_{side}"])[first])
+        out[f"time_max_{side}"] = np.where(np.isinf(merged), np.nan, merged)
+    for c in additive:
+        if c.startswith(SKETCH):
+            out[c] = _merge_sketches(state[c], gid, n_groups)
+    return out
+
+
+def _merge_sketches(
+    rows: Sequence[Any], gid: IntArray, n_groups: int
+) -> list[list[dict[str, Any]]]:
+    """Add sketch rows' counts per bucket, per group (lists of ``{b, w}``)."""
+    ids: list[list[int]] = [[] for _ in range(n_groups)]
+    counts: list[list[float]] = [[] for _ in range(n_groups)]
+    for g, entries in zip(gid, rows, strict=True):
+        for e in entries or ():
+            ids[g].append(e["b"])
+            counts[g].append(e["w"])
+    out = []
+    for b, w in zip(ids, counts, strict=True):
+        uniq, inverse = np.unique(np.asarray(b, np.int64), return_inverse=True)
+        sums = np.bincount(inverse, weights=np.asarray(w, np.float64), minlength=uniq.size)
+        out.append([{"b": int(i), "w": float(x)} for i, x in zip(uniq, sums, strict=True)])
+    return out
 
 
 class StateStats:
