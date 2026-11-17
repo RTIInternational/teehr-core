@@ -8,8 +8,8 @@ import pytest
 
 from teehr_core import metrics
 from teehr_core.metrics import compute_grouped
+from teehr_core.spec.models import MetricSpec
 from tests.golden_utils import assert_matches
-from tests.spec_shim import output_name
 
 #: Metrics callable as f(obs, sim): no required options, no times, two-sided.
 METRIC_NAMES = [
@@ -48,7 +48,7 @@ def test_variants_match_exact_vectors(golden_dir: Path) -> None:
     variants = [s for s in data["metric_specs"] if isinstance(s, dict)]
     for case in data["cases"]:
         for spec in variants:
-            output = output_name(spec)
+            output = MetricSpec.model_validate(spec).output_name()
             options = {k: v for k, v in spec.items() if k not in ("name", "as")}
             got = metrics.evaluate(
                 case["obs"], case["sim"], [spec["name"]], times=case["times"], **options

@@ -15,6 +15,7 @@ dependencies = [
     "numpy>=2.2",
     "pyarrow>=21",
     "pydantic>=2.11",
+    "pyyaml>=6",  # specs as YAML
     "sqlglot>=26",
 ]
 
@@ -32,6 +33,7 @@ dev = [
     "mypy>=1.13",
     "pytest>=8.3",
     "ruff>=0.8",
+    "types-pyyaml>=6",
 ]
 
 # Golden values (scripts/fixtures/compute_golden.py): independent reference libraries.

@@ -295,10 +295,10 @@ def test_water_years_and_gumboot_through_the_engine() -> None:
     )
 
 
-@pytest.mark.skip(reason="needs the spec models (teehr-core step 4)")
 def test_gumboot_spec_checks() -> None:
     from pydantic import ValidationError
-    from verirace.spec.models import Bootstrap
+
+    from teehr_core.spec.models import Bootstrap
 
     with pytest.raises(ValidationError, match="no 'block'"):
         Bootstrap.model_validate({"method": "year_block", "block": "P7D"})

@@ -1,0 +1,1631 @@
+{
+  "$defs": {
+    "AttributeField": {
+      "additionalProperties": false,
+      "description": "An attribute of each pair's observed series, to group or filter by (e.g. a state).\n\n``of: series`` (default) reads it from the observed dataset's series table; ``of:\nlocation`` from the series' location in the dataset's locations layer. Constant per\nseries; null where the series or location has none.",
+      "properties": {
+        "attribute": {
+          "description": "The column in the series table or layer.",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Attribute",
+          "type": "string"
+        },
+        "fn": {
+          "const": "attribute",
+          "title": "Fn",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "of": {
+          "default": "series",
+          "enum": [
+            "series",
+            "location"
+          ],
+          "title": "Of",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "attribute"
+      ],
+      "title": "AttributeField",
+      "type": "object"
+    },
+    "Bootstrap": {
+      "additionalProperties": false,
+      "description": "Bootstrap confidence intervals for a stage's metrics (shared resamples).\n\nEvery group is resampled ``reps`` times, the same way for every metric in the\nstage. Results depend only on ``seed`` and the group's key, never on how the work\nwas split up.",
+      "properties": {
+        "block": {
+          "anyOf": [
+            {
+              "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            },
+            {
+              "pattern": "^P\\d+M$",
+              "type": "string"
+            },
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Block length for block methods. Whole days (e.g. P7D) or calendar months (e.g. P1M, P3M) resample those periods of value_time, empty ones included, and can come from stored state; another duration (e.g. PT12H) is converted to rows from each group's time span; a number is rows.",
+          "title": "Block"
+        },
+        "method": {
+          "default": "circular_block",
+          "description": "iid resamples pairs; circular_block resamples fixed-length blocks (wrapping around); stationary uses random block lengths with mean `block`; year_block (alias gumboot) resamples whole (water) years, keeping each year's seasonality.",
+          "enum": [
+            "iid",
+            "circular_block",
+            "stationary",
+            "year_block"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "min_count": {
+          "default": 30,
+          "description": "Groups with fewer forecast cases (pairs, for deterministic forecasts) get null intervals.",
+          "minimum": 2,
+          "title": "Min Count",
+          "type": "integer"
+        },
+        "min_years": {
+          "default": 5,
+          "description": "year_block: groups spanning fewer years get null intervals.",
+          "minimum": 2,
+          "title": "Min Years",
+          "type": "integer"
+        },
+        "quantiles": {
+          "items": {
+            "exclusiveMaximum": 1,
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "minItems": 1,
+          "title": "Quantiles",
+          "type": "array"
+        },
+        "reps": {
+          "default": 1000,
+          "maximum": 10000,
+          "minimum": 10,
+          "title": "Reps",
+          "type": "integer"
+        },
+        "seed": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "sort_by": {
+          "description": "Pair columns that order each group before resampling blocks.",
+          "items": {
+            "pattern": "^[a-z_][a-z0-9_]*$",
+            "type": "string"
+          },
+          "title": "Sort By",
+          "type": "array"
+        },
+        "year_start_month": {
+          "default": 10,
+          "description": "year_block: the month years start in (10 = US water year; 1 = calendar).",
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Year Start Month",
+          "type": "integer"
+        }
+      },
+      "title": "Bootstrap",
+      "type": "object"
+    },
+    "CalendarField": {
+      "additionalProperties": false,
+      "description": "A calendar label of each pair's time, to group by (water year, quarter, month...).\n\n``of`` is the time labelled: ``value_time`` (default) or ``reference_time`` (when a\nforecast was issued; null for pairs without one). Times are UTC. Labels are strings:\n\n- ``year``: ``2025``; ``month``: ``2025-03``;\n- ``water_year``: the year ``year_start_month`` (default 10, October) starts, named for\n  the calendar year it ends in (October 2024 is water year 2025);\n- ``quarter``: calendar quarters, ``2025-Q1`` (January to March); with\n  ``year_start_month``, quarters of that year instead, named by its water year\n  (``2025-Q1`` is October to December 2024 for 10);\n- ``season``: meteorological seasons ``DJF``, ``MAM``, ``JJA``, ``SON`` (across years;\n  group by a year field too for one season per year).",
+      "properties": {
+        "fn": {
+          "const": "calendar",
+          "title": "Fn",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "of": {
+          "default": "value_time",
+          "enum": [
+            "value_time",
+            "reference_time"
+          ],
+          "title": "Of",
+          "type": "string"
+        },
+        "part": {
+          "enum": [
+            "year",
+            "month",
+            "water_year",
+            "quarter",
+            "season"
+          ],
+          "title": "Part",
+          "type": "string"
+        },
+        "year_start_month": {
+          "anyOf": [
+            {
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The month a year starts: water_year default 10, quarter default 1.",
+          "title": "Year Start Month"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "part"
+      ],
+      "title": "CalendarField",
+      "type": "object"
+    },
+    "ChangeField": {
+      "additionalProperties": false,
+      "description": "Each value's change over a window within its series: ``value(t) - value(t - window)``.\n\n``side: primary`` uses each primary series; ``side: secondary`` each forecast trajectory\n(dataset, series, reference time and member or quantile). Null when the series has no\nvalue exactly ``window`` earlier. With the metrics' ``values`` option, contingency\nmetrics then score ramps: a change of at least the threshold.",
+      "properties": {
+        "fn": {
+          "const": "change",
+          "title": "Fn",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "side": {
+          "default": "primary",
+          "enum": [
+            "primary",
+            "secondary"
+          ],
+          "title": "Side",
+          "type": "string"
+        },
+        "window": {
+          "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+          "title": "Window",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "window"
+      ],
+      "title": "ChangeField",
+      "type": "object"
+    },
+    "ColumnRef": {
+      "additionalProperties": false,
+      "description": "A pair column holding a per-pair value (e.g. a flood threshold or a capacity).",
+      "properties": {
+        "column": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Column",
+          "type": "string"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "title": "ColumnRef",
+      "type": "object"
+    },
+    "ConditionsField": {
+      "additionalProperties": false,
+      "description": "Overlapping subsets: each pair is copied into every level whose condition it meets.\n\n``levels`` maps a label to a SQL condition (checked like ``filter``), e.g.\n``above_q95: \"primary_value > q95\"``; with ``all`` (default true) every pair also counts\nin a level labelled ``all``. Unlike other fields a pair can be in several levels, so\ngrouping by the field scores each level over its own pairs (a pair above q95 counts\nin ``above_q85`` too). Conditions may use any other field: the copies are made after\nevery other field and before ``filter``, which can keep a level (``flow =\n'above_q95'``). Several conditions fields multiply (each pair in every combination).",
+      "properties": {
+        "all": {
+          "default": true,
+          "description": "Also an 'all' level: every pair.",
+          "title": "All",
+          "type": "boolean"
+        },
+        "fn": {
+          "const": "conditions",
+          "title": "Fn",
+          "type": "string"
+        },
+        "levels": {
+          "minProperties": 1,
+          "patternProperties": {
+            "^[a-z_][a-z0-9_]*$": {
+              "type": "string"
+            }
+          },
+          "title": "Levels",
+          "type": "object"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "levels"
+      ],
+      "title": "ConditionsField",
+      "type": "object"
+    },
+    "EventsField": {
+      "additionalProperties": false,
+      "description": "Events: runs of values at or above a threshold, labelled per series.\n\nEach pair inside an event gets the event's id (``<series>@<start>``); others get\nnull, so ``group_by`` the field scores each event and ``filter`` keeps event pairs.\n``threshold`` is a value with its unit (``{value: v, unit: u}``), ``{quantile: q}`` of\neach series' own values (in the evaluated window), or ``{column: c}``: a pair column\nsuch as a ``percentile`` field, for a threshold from the series' whole record. Runs\nseparated by less than ``merge_gap`` join into one event (the gap included); events\nshorter than ``min_duration`` are dropped.",
+      "properties": {
+        "fn": {
+          "const": "events",
+          "title": "Fn",
+          "type": "string"
+        },
+        "merge_gap": {
+          "anyOf": [
+            {
+              "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merge Gap"
+        },
+        "min_duration": {
+          "anyOf": [
+            {
+              "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Duration"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "side": {
+          "default": "primary",
+          "enum": [
+            "primary",
+            "secondary"
+          ],
+          "title": "Side",
+          "type": "string"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "$ref": "#/$defs/SeriesQuantile"
+            },
+            {
+              "$ref": "#/$defs/ColumnRef"
+            }
+          ],
+          "title": "Threshold"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "threshold"
+      ],
+      "title": "EventsField",
+      "type": "object"
+    },
+    "ExceedanceField": {
+      "additionalProperties": false,
+      "description": "Each value's exceedance probability within its series.\n\nWeibull plotting position: rank (largest first, ties share the lower rank) / (n + 1)\nover the series' distinct times. ``side: primary`` ranks each primary series;\n``side: secondary`` ranks each forecast trajectory (dataset, series, reference time and\nmember or quantile). Computed over the pairs being evaluated (the evaluated window).",
+      "properties": {
+        "fn": {
+          "const": "exceedance",
+          "title": "Fn",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "side": {
+          "default": "primary",
+          "enum": [
+            "primary",
+            "secondary"
+          ],
+          "title": "Side",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fn"
+      ],
+      "title": "ExceedanceField",
+      "type": "object"
+    },
+    "ExprField": {
+      "additionalProperties": false,
+      "description": "A row-level field computed from a SQL expression.",
+      "properties": {
+        "expr": {
+          "title": "Expr",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "expr"
+      ],
+      "title": "ExprField",
+      "type": "object"
+    },
+    "GeneratedInput": {
+      "additionalProperties": false,
+      "description": "A secondary dataset generated from the observations: a reference for skill scores.\n\n- ``persistence`` (``like``): for every forecast in ``like`` (series, reference time,\n  value time), the last observation at or before the reference time, for the\n  observed series linked to that forecast series. Computed within the run from the\n  observations it reads.\n- ``climatology`` (``from``): a stored climatology dataset (one value per series, day\n  of year and hour, built over the period of record) looked up at each observation's\n  day of year and hour. No reference times, so it can't be grouped by lead time.\n- ``blend`` (``like`` and ``from``): the optimal combination of persistence and\n  climatology (Yang et al. 2020), on the grid of ``like``: climatology at the value\n  time plus the persistence anomaly (observation minus climatology at the reference\n  time) damped by the anomalies' autocorrelation at that lead, fitted per observed\n  series and whole-hour lead from the observations the run reads.\n\nPersistence (and so the blend) uses observations complete by the reference time: an\ninstantaneous value at or before it, or a value over a period whose window has ended.\nPairs of generated inputs are keyed by the observed series.",
+      "properties": {
+        "filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Expression applied before pairing; numbers compared with value are in the variable's canonical unit.",
+          "title": "Filter"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "climatology: a climatology dataset (kind 'climatology').",
+          "title": "From"
+        },
+        "generate": {
+          "description": "What to generate.",
+          "enum": [
+            "persistence",
+            "climatology",
+            "blend"
+          ],
+          "title": "Generate",
+          "type": "string"
+        },
+        "like": {
+          "anyOf": [
+            {
+              "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "persistence: a forecast dataset whose grid (series, reference times, value times) the persistence forecast copies.",
+          "title": "Like"
+        },
+        "max_age": {
+          "anyOf": [
+            {
+              "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "persistence (and blend): use only an observation at most this old at the reference time, e.g. PT2H for hourly forecasts. Set it: without it a run can't limit the observations it reads to the forecasts' span (an observation from any time before may be used), so it reads every series' whole record, which can be many times the data and memory the evaluation needs.",
+          "title": "Max Age"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Its name in secondary_dataset; default '<generate>:<source>'.",
+          "title": "Name"
+        }
+      },
+      "required": [
+        "generate"
+      ],
+      "title": "GeneratedInput",
+      "type": "object"
+    },
+    "Guard": {
+      "additionalProperties": false,
+      "description": "Null metrics where a group's data is too thin to trust them, and say why.\n\nConditions apply to each group's observations; ``metrics`` (output names) limits\nwhich metrics a guard nulls (default: all of the stage's). A tripped guard nulls the\nmetrics and their bootstrap intervals, and the stage's ``null_reason`` column says\nwhy, e.g. ``nse, kge: obs std 0.004 < 0.01``.",
+      "properties": {
+        "metrics": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Metrics it guards (default all).",
+          "title": "Metrics"
+        },
+        "min_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "At least this many pairs.",
+          "title": "Min Count"
+        },
+        "min_obs_mean": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Observed mean at least this (e.g. for relative metrics).",
+          "title": "Min Obs Mean"
+        },
+        "min_obs_std": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Observed standard deviation at least this (e.g. for NSE, KGE, correlation, which divide by the observations' variability).",
+          "title": "Min Obs Std"
+        }
+      },
+      "title": "Guard",
+      "type": "object"
+    },
+    "InputRef": {
+      "additionalProperties": false,
+      "description": "A dataset used as input, optionally filtered.",
+      "properties": {
+        "dataset": {
+          "description": "Dataset name in the catalog.",
+          "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+          "title": "Dataset",
+          "type": "string"
+        },
+        "filter": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Expression applied before pairing; numbers compared with value are in the variable's canonical unit.",
+          "title": "Filter"
+        }
+      },
+      "required": [
+        "dataset"
+      ],
+      "title": "InputRef",
+      "type": "object"
+    },
+    "Inputs": {
+      "additionalProperties": false,
+      "description": "The primary dataset (usually observations) and one or more secondary datasets.\n\nPairing sides are named ``primary`` and ``secondary`` (paired columns ``primary_*`` and\n``secondary_*``), shared with the TEEHR team. A dataset's role (observed, simulated,\nforecast) still says what its data is.",
+      "properties": {
+        "primary": {
+          "$ref": "#/$defs/InputRef",
+          "description": "The dataset scored against: usually observations."
+        },
+        "secondary": {
+          "description": "Datasets scored against the primary one (simulations or forecasts). Each becomes a value of the 'secondary_dataset' column in pairs.",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/InputRef"
+              },
+              {
+                "$ref": "#/$defs/GeneratedInput"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Secondary",
+          "type": "array"
+        }
+      },
+      "required": [
+        "primary",
+        "secondary"
+      ],
+      "title": "Inputs",
+      "type": "object"
+    },
+    "LeadTimeBinsField": {
+      "additionalProperties": false,
+      "description": "Lead time (``value_time - reference_time``) binned into labelled intervals.\n\nLabels look like ``[0h, 6h)``. Give either a fixed ``width`` or explicit ``edges``;\nwith edges, lead times past the last edge fall in ``[last, inf)``.",
+      "properties": {
+        "edges": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Edges"
+        },
+        "fn": {
+          "const": "lead_time_bins",
+          "title": "Fn",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Width"
+        }
+      },
+      "required": [
+        "name",
+        "fn"
+      ],
+      "title": "LeadTimeBinsField",
+      "type": "object"
+    },
+    "MetricSpec": {
+      "additionalProperties": false,
+      "description": "A metric (first stage) or summary (later stages) with options.",
+      "properties": {
+        "as": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z_][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Output column name.",
+          "title": "As"
+        },
+        "estimator": {
+          "anyOf": [
+            {
+              "enum": [
+                "standard",
+                "fair"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "crps: standard (default) or fair (unbiased for the ensemble size).",
+          "title": "Estimator"
+        },
+        "exceedance": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "fdc_slope: exceedance probabilities [e1, e2], 0 < e1 < e2 < 1.",
+          "title": "Exceedance"
+        },
+        "interval": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Interval metrics: the central interval's quantile levels, default [0.05, 0.95].",
+          "title": "Interval"
+        },
+        "log": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "fdc_slope: the log form (default true) or the linear slope (false).",
+          "title": "Log"
+        },
+        "missing_day_threshold": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Timing metrics: the fraction of a year's days that may be missing before the year is left out (default 0.1).",
+          "title": "Missing Day Threshold"
+        },
+        "name": {
+          "description": "A metric's canonical name or one of its aliases (e.g. rmse for root_mean_square_error); results carry the canonical name. Later stages: a summary.",
+          "title": "Name",
+          "type": "string"
+        },
+        "normalize_by": {
+          "anyOf": [
+            {
+              "enum": [
+                "mean_primary",
+                "range_primary"
+              ],
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "$ref": "#/$defs/ColumnRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "nmae/nrmse: mean_primary (default), range_primary, a value with its unit (e.g. installed capacity, {value: 500, unit: \"MW\"}) or {column: <pair column>} (its group mean).",
+          "title": "Normalize By"
+        },
+        "of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Later stages only: column to summarize.",
+          "title": "Of"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "rank_frequency: the observation's rank among ensemble members (0 = below all members).",
+          "title": "Rank"
+        },
+        "sa": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "KGE family: weight on the variability term (default 1).",
+          "title": "Sa"
+        },
+        "sb": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "KGE family: weight on the bias term (default 1).",
+          "title": "Sb"
+        },
+        "scale": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ColumnRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "mase: the column holding each pair's naive scale (a naive_scale field)."
+        },
+        "side": {
+          "anyOf": [
+            {
+              "enum": [
+                "primary",
+                "secondary"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Signatures: which values (default primary).",
+          "title": "Side"
+        },
+        "sr": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "KGE family: weight on the correlation term (default 1).",
+          "title": "Sr"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Quantity"
+            },
+            {
+              "$ref": "#/$defs/ColumnRef"
+            },
+            {
+              "$ref": "#/$defs/ObsQuantile"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Contingency metrics: event threshold (value >= threshold): a value with its unit ({value: 1000, unit: \"[cft_i]/s\"}), {column: <pair column>} or {primary_quantile: 0.9} (per group).",
+          "title": "Threshold"
+        },
+        "transform": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Transform"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First stage only: transform primary and secondary values before the metric (log is natural; inv is reciprocal)."
+        },
+        "values": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValuesRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First stage only: compute the metric on these pair columns instead of primary_value and secondary_value, e.g. change fields for ramps."
+        },
+        "year_start_month": {
+          "anyOf": [
+            {
+              "maximum": 12,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Annual metrics: first month of the year (1 = calendar, 10 = water year).",
+          "title": "Year Start Month"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "MetricSpec",
+      "type": "object"
+    },
+    "NaiveScaleField": {
+      "additionalProperties": false,
+      "description": "Each pair's in-sample naive scale, for MASE.\n\nThe observed series' stored mean ``|y(t) - y(t - lag)|`` over a training period, from\na ``naive_scale`` dataset, converted to the observed unit.",
+      "properties": {
+        "fn": {
+          "const": "naive_scale",
+          "title": "Fn",
+          "type": "string"
+        },
+        "from": {
+          "description": "A naive_scale dataset.",
+          "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+          "title": "From",
+          "type": "string"
+        },
+        "lag": {
+          "description": "The naive forecast's lag, as built (e.g. PT1H, P1D).",
+          "pattern": "^P(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?)?$",
+          "title": "Lag",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "from",
+        "lag"
+      ],
+      "title": "NaiveScaleField",
+      "type": "object"
+    },
+    "ObsQuantile": {
+      "additionalProperties": false,
+      "description": "A quantile of each group's observations.",
+      "properties": {
+        "primary_quantile": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Primary Quantile",
+          "type": "number"
+        }
+      },
+      "required": [
+        "primary_quantile"
+      ],
+      "title": "ObsQuantile",
+      "type": "object"
+    },
+    "Output": {
+      "additionalProperties": false,
+      "description": "What the evaluation returns.",
+      "properties": {
+        "attributes": {
+          "description": "With geometry: attributes of the same place to add as result columns, e.g. a basin's name, from the layer the geometry comes from.",
+          "items": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+            "type": "string"
+          },
+          "title": "Attributes",
+          "type": "array"
+        },
+        "geometry": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z_][a-z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Give each result row a geometry, by a column of the final stage's group_by: a within field (its polygon) or primary_series_key (the observed series' location). Looked up once per result row; results then come as GeoJSON on request.",
+          "title": "Geometry"
+        },
+        "include_pairs": {
+          "default": false,
+          "description": "Also return the paired rows.",
+          "title": "Include Pairs",
+          "type": "boolean"
+        },
+        "pairs": {
+          "anyOf": [
+            {
+              "enum": [
+                "all",
+                "none"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whether a saved evaluation's runs keep their pairs in the project lake: 'all' or 'none'. Unset uses the platform default. First-stage rows and results are always kept; without pairs, drill-down re-pairs on request.",
+          "title": "Pairs"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Unit to evaluate in (e.g. 'm3/s'): primary and secondary values are converted to it before fields and metrics, and thresholds and normalizers (which carry their own unit) are converted to it too. Default: the observed dataset's unit. An input filter's numbers are in its variable's canonical unit.",
+          "title": "Unit"
+        }
+      },
+      "title": "Output",
+      "type": "object"
+    },
+    "Pairing": {
+      "additionalProperties": false,
+      "description": "How predicted series are matched to observed series.",
+      "properties": {
+        "common_sample": {
+          "default": false,
+          "description": "Score every secondary input on the same sample: keep only observations (primary series and value time) that every secondary input paired with, after filters. A forecast missing on hard days then can't look better for it.",
+          "title": "Common Sample",
+          "type": "boolean"
+        },
+        "on_attribute": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Series catalog attribute shared by primary and secondary series.",
+          "title": "On Attribute"
+        },
+        "relation": {
+          "anyOf": [
+            {
+              "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Crosswalk dataset mapping primary (left) to secondary (right) keys.",
+          "title": "Relation"
+        },
+        "time": {
+          "$ref": "#/$defs/TimeMatch",
+          "default": {
+            "method": "exact"
+          }
+        }
+      },
+      "title": "Pairing",
+      "type": "object"
+    },
+    "PercentileField": {
+      "additionalProperties": false,
+      "description": "Each pair's stored percentile of its observed series, over its period of record.\n\nFrom a ``percentiles`` dataset (built over the whole record, so not limited to the\nevaluated window), converted to the observed unit; null for series without one (too\nshort a record). Non-exceedance: the 90th is the value not exceeded 90% of the time.\nUse it as a threshold: ``{column: <name>}``.",
+      "properties": {
+        "fn": {
+          "const": "percentile",
+          "title": "Fn",
+          "type": "string"
+        },
+        "from": {
+          "description": "A percentiles dataset.",
+          "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+          "title": "From",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "percentile": {
+          "description": "Which percentile (0 to 100), as built (e.g. 90, 99.5).",
+          "exclusiveMaximum": 100,
+          "exclusiveMinimum": 0,
+          "title": "Percentile",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "from",
+        "percentile"
+      ],
+      "title": "PercentileField",
+      "type": "object"
+    },
+    "Quantity": {
+      "additionalProperties": false,
+      "description": "A value with its unit (a UCUM symbol), e.g. ``{value: 1000, unit: \"[cft_i]/s\"}``.\n\nBuilding the plan converts it to the evaluation unit (``output.unit``, else the\nprimary dataset's), so a spec means the same thing whatever unit its data are in.",
+      "properties": {
+        "unit": {
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "unit"
+      ],
+      "title": "Quantity",
+      "type": "object"
+    },
+    "Reduce": {
+      "additionalProperties": false,
+      "description": "Reduce each window of pairs to a statistic before the metrics (e.g. its peak).\n\nThe pairs are grouped by ``by`` (a forecast window: series, reference time, lead-time\nbin...), and each window becomes one pair per statistic in ``stats``: its mean, min,\nmax or sum of observed and of predicted values, labelled in a ``stat`` column. Metrics\nthen score those reduced pairs. Applied after ``filter`` and conditions, before a\nrollup's copies.",
+      "properties": {
+        "by": {
+          "description": "Columns that make a window; must include primary_series_key. The predicted dataset and series, members, quantiles and conditions fields are added.",
+          "items": {
+            "pattern": "^[a-z_][a-z0-9_]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "By",
+          "type": "array"
+        },
+        "stats": {
+          "items": {
+            "enum": [
+              "mean",
+              "min",
+              "max",
+              "sum"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Stats",
+          "type": "array"
+        }
+      },
+      "required": [
+        "by",
+        "stats"
+      ],
+      "title": "Reduce",
+      "type": "object"
+    },
+    "SeriesQuantile": {
+      "additionalProperties": false,
+      "description": "A quantile of each series' own values (in the evaluated window).",
+      "properties": {
+        "quantile": {
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "title": "Quantile",
+          "type": "number"
+        }
+      },
+      "required": [
+        "quantile"
+      ],
+      "title": "SeriesQuantile",
+      "type": "object"
+    },
+    "Skill": {
+      "additionalProperties": false,
+      "description": "Skill scores of each secondary dataset against a reference dataset.\n\nFor each listed metric, ``<metric>_skill = 1 - score / score_of_reference`` (or\n``<metric>_ratio = score / score_of_reference`` with ``form: ratio``), comparing rows\nthat match on every group_by column except ``secondary_dataset``.",
+      "properties": {
+        "form": {
+          "default": "skill",
+          "enum": [
+            "skill",
+            "ratio"
+          ],
+          "title": "Form",
+          "type": "string"
+        },
+        "lag": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Autocovariance lags in the test's (Newey-West) variance, in time steps; default floor(4 (n / 100)^(2/9)).",
+          "title": "Lag"
+        },
+        "loss": {
+          "default": "squared",
+          "description": "The test's loss: squared or absolute error.",
+          "enum": [
+            "squared",
+            "absolute"
+          ],
+          "title": "Loss",
+          "type": "string"
+        },
+        "matched": {
+          "default": false,
+          "description": "Compare each dataset with the reference only on observations both forecast (same observed series and value_time within a group), recomputing both scores on those; the metric columns themselves stay unmatched.",
+          "title": "Matched",
+          "type": "boolean"
+        },
+        "metrics": {
+          "description": "Output columns of error metrics in this stage (a metric's alias names its canonical column).",
+          "items": {
+            "pattern": "^[a-z_][a-z0-9_]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Metrics",
+          "type": "array"
+        },
+        "reference": {
+          "description": "A secondary input dataset, e.g. a persistence forecast.",
+          "title": "Reference",
+          "type": "string"
+        },
+        "test": {
+          "anyOf": [
+            {
+              "const": "dm",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "dm: Diebold-Mariano test of each dataset's loss against the reference's on the observations both forecast; adds dm_statistic (negative: the dataset's errors are smaller) and dm_p_value (two-sided).",
+          "title": "Test"
+        }
+      },
+      "required": [
+        "reference",
+        "metrics"
+      ],
+      "title": "Skill",
+      "type": "object"
+    },
+    "Stage": {
+      "additionalProperties": false,
+      "description": "One aggregation stage.",
+      "properties": {
+        "bootstrap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Bootstrap"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First stage only: bootstrap intervals for its metrics."
+        },
+        "group_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Group By",
+          "type": "array"
+        },
+        "grouping_sets": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "pattern": "^[a-z_][a-z0-9_]*$",
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First stage only: the general form of rollup, each set the columns a row is grouped by (besides group_by); [] aggregates across all of them.",
+          "title": "Grouping Sets"
+        },
+        "guards": {
+          "description": "First stage only: null metrics on too little or too flat data, with a null_reason column.",
+          "items": {
+            "$ref": "#/$defs/Guard"
+          },
+          "title": "Guards",
+          "type": "array"
+        },
+        "metrics": {
+          "items": {
+            "$ref": "#/$defs/MetricSpec"
+          },
+          "minItems": 1,
+          "title": "Metrics",
+          "type": "array"
+        },
+        "rollup": {
+          "anyOf": [
+            {
+              "items": {
+                "pattern": "^[a-z_][a-z0-9_]*$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First stage only: also aggregate across these columns, coarsest first, as SQL ROLLUP: rollup [water_year, quarter] gives rows by quarter, by water year and for all. Each row's set is named in a 'grouping' column, and a column it's aggregated across reads '(all)'. Folded into grouping_sets and group_by.",
+          "title": "Rollup"
+        },
+        "skill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Skill"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "First stage only: skill scores against a reference dataset."
+        }
+      },
+      "required": [
+        "metrics"
+      ],
+      "title": "Stage",
+      "type": "object"
+    },
+    "TimeMatch": {
+      "additionalProperties": false,
+      "description": "How predicted values are aligned with observed values in time.",
+      "properties": {
+        "method": {
+          "const": "exact",
+          "default": "exact",
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "title": "TimeMatch",
+      "type": "object"
+    },
+    "Transform": {
+      "description": "Transform applied to obs and pred before a metric is computed (the shared list).\n\nPairs where the transform is undefined or not finite (``log`` of a non-positive\nvalue, ``exp`` overflowing) are excluded from that metric only.",
+      "enum": [
+        "log",
+        "sqrt",
+        "square",
+        "cube",
+        "exp",
+        "reciprocal",
+        "abs"
+      ],
+      "title": "Transform",
+      "type": "string"
+    },
+    "ValuesRef": {
+      "additionalProperties": false,
+      "description": "Pair columns a metric reads instead of ``primary_value`` and ``secondary_value``.",
+      "properties": {
+        "primary": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Primary",
+          "type": "string"
+        },
+        "secondary": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Secondary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "primary",
+        "secondary"
+      ],
+      "title": "ValuesRef",
+      "type": "object"
+    },
+    "WithinField": {
+      "additionalProperties": false,
+      "description": "The polygon of a layer each pair's observed series is in, to group by (e.g. a basin).\n\nEach series' location (the observed dataset's locations layer; a line or polygon by\nits centroid) is matched to the polygons of ``layer`` that contain it, boundaries\nincluded. The value is that polygon's ``attribute`` (default its key); where polygons\noverlap, the one with the smallest key; null when no polygon contains the location.",
+      "properties": {
+        "attribute": {
+          "default": "location_key",
+          "description": "The polygon attribute to label with (its key).",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,127}$",
+          "title": "Attribute",
+          "type": "string"
+        },
+        "fn": {
+          "const": "within",
+          "title": "Fn",
+          "type": "string"
+        },
+        "layer": {
+          "description": "A polygon layer: name, or public.<name>.",
+          "pattern": "^(public\\.)?[a-z][a-z0-9_]{0,59}$",
+          "title": "Layer",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[a-z_][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "fn",
+        "layer"
+      ],
+      "title": "WithinField",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "An evaluation spec (version 1).",
+  "properties": {
+    "aggregate": {
+      "items": {
+        "$ref": "#/$defs/Stage"
+      },
+      "minItems": 1,
+      "title": "Aggregate",
+      "type": "array"
+    },
+    "fields": {
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ExprField"
+          },
+          {
+            "$ref": "#/$defs/LeadTimeBinsField"
+          },
+          {
+            "$ref": "#/$defs/CalendarField"
+          },
+          {
+            "$ref": "#/$defs/ConditionsField"
+          },
+          {
+            "$ref": "#/$defs/ExceedanceField"
+          },
+          {
+            "$ref": "#/$defs/EventsField"
+          },
+          {
+            "$ref": "#/$defs/ChangeField"
+          },
+          {
+            "$ref": "#/$defs/NaiveScaleField"
+          },
+          {
+            "$ref": "#/$defs/PercentileField"
+          },
+          {
+            "$ref": "#/$defs/AttributeField"
+          },
+          {
+            "$ref": "#/$defs/WithinField"
+          }
+        ]
+      },
+      "title": "Fields",
+      "type": "array"
+    },
+    "filter": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "SQL expression applied to pairs.",
+      "title": "Filter"
+    },
+    "inputs": {
+      "$ref": "#/$defs/Inputs"
+    },
+    "name": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "output": {
+      "$ref": "#/$defs/Output",
+      "default": {
+        "attributes": [],
+        "geometry": null,
+        "include_pairs": false,
+        "pairs": null,
+        "unit": null
+      }
+    },
+    "pair": {
+      "$ref": "#/$defs/Pairing"
+    },
+    "reduce": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Reduce"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Reduce each window of pairs to statistics before metrics."
+    },
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "name",
+    "inputs",
+    "pair",
+    "aggregate"
+  ],
+  "title": "EvaluationSpec",
+  "type": "object"
+}
