@@ -111,7 +111,8 @@ def test_state_from_shards_merged_by_bucket_equals_one_run(
         for s in shards
     ]
     state = pa.concat_tables(parts, promote_options="permissive")
-    merged = _sql(DuckDBBackend.merge_state_by_bucket_sql(spec, "s"), s=state)
+    merged = DuckDBBackend.merge_state_by_bucket(spec, state)
+    assert merged.schema == state.schema  # a run stores both kinds in one table
 
     by = [*spec.aggregate[0].group_by, "__transform", "__bucket"]
     distinct = _sql(f"SELECT count(*) AS n FROM (SELECT DISTINCT {', '.join(by)} FROM s)", s=state)

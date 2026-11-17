@@ -622,6 +622,23 @@ class DuckDBBackend:
         return merged
 
     @staticmethod
+    def merge_state_by_bucket(spec: EvaluationSpec, state: pa.Table) -> pa.Table:
+        """Merge ``state`` (e.g. shards' parts) as :meth:`merge_state_by_bucket_sql` does.
+
+        The result has ``state``'s columns, in its order and types: one table can hold
+        both.
+        """
+        con = memory_connection()
+        try:
+            con.execute("SET TimeZone = 'UTC'")
+            register(con, "s", state)
+            cols = ", ".join(q(c) for c in state.column_names)
+            sql = f"SELECT {cols} FROM ({DuckDBBackend.merge_state_by_bucket_sql(spec, 's')})"
+            return arrow_table(con, sql).cast(state.schema)
+        finally:
+            con.close()
+
+    @staticmethod
     def merge_dm_sql(spec: EvaluationSpec, source: str) -> str | None:
         """Return SQL summing DM state rows per group and lag (None without a DM test)."""
         stage = spec.aggregate[0]
