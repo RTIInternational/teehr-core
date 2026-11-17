@@ -35,7 +35,7 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 
-from teehr_core.metrics.registry import METRICS, MetricRequest, Transform, _stats
+from teehr_core.metrics.registry import METRICS, MetricRequest, TransformKey, _stats
 from teehr_core.metrics.sketch import sketch, sketch_quantiles
 from teehr_core.metrics.stats import COMPONENTS, FloatArray, GroupStats, IntArray
 
@@ -93,7 +93,7 @@ def group_state(
     gid: IntArray,
     n_groups: int,
     value_time: FloatArray | None = None,
-    transform: Transform | None = None,
+    transform: TransformKey | None = None,
     requests: Sequence[MetricRequest] = (),
     columns: dict[str, FloatArray] | None = None,
 ) -> dict[str, Any]:
@@ -390,7 +390,7 @@ class StateStats:
 
 
 def compute_from_state(
-    requests: Sequence[MetricRequest], states: dict[Transform | None, dict[str, Any]]
+    requests: Sequence[MetricRequest], states: dict[TransformKey | None, dict[str, Any]]
 ) -> dict[MetricRequest, FloatArray]:
     """Compute metrics per group from merged state (one per transform the requests use).
 

@@ -32,8 +32,11 @@ from teehr_core.metrics.registry import (
     SPEC_NORMALIZERS,
     SPEC_SIDES,
     TRANSFORM_ALIASES,
+    MetricRequest,
+    OffsetTransform,
     Params,
     Transform,
+    TransformKey,
     canonical_name,
 )
 from teehr_core.spec.expressions import check_expression
@@ -599,6 +602,26 @@ _PARAM_FIELDS = (
 )
 
 
+class TransformWithOffset(_Model):
+    """A transform of the values shifted first: ``name(x + offset)``.
+
+    E.g. ``log`` of flows with zero days, which a plain ``log`` leaves out.
+    """
+
+    name: Transform
+    offset: Quantity = Field(
+        description="Added to both sides before the transform: a value with its unit "
+        '({value: 0.01, unit: "m3/s"}), converted to the evaluation unit by scale alone.'
+    )
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _alias(cls, v: Any) -> Any:
+        return TRANSFORM_ALIASES.get(v, v) if isinstance(v, str) else v
+
+    _units = field_validator("offset", mode="before")(_require_unit)
+
+
 class ValuesRef(_Model):
     """Pair columns a metric reads instead of ``primary_value`` and ``secondary_value``."""
 
@@ -635,10 +658,11 @@ class MetricSpec(_Model):
             )
         return v
 
-    transform: Transform | None = Field(
+    transform: Transform | TransformWithOffset | None = Field(
         default=None,
         description="First stage only: transform primary and secondary values before the "
-        "metric (log is natural; inv is reciprocal).",
+        "metric (log is natural; inv is reciprocal), by name or as {name, offset} to add "
+        "an offset first.",
     )
 
     @field_validator("transform", mode="before")
@@ -764,6 +788,23 @@ class MetricSpec(_Model):
             p["kge_weights"] = tuple(1.0 if w is None else w for w in (self.sr, self.sa, self.sb))
         return Params(**p)
 
+    @property
+    def transform_name(self) -> Transform | None:
+        """Return the transform, without its offset."""
+        t = self.transform
+        return t.name if isinstance(t, TransformWithOffset) else t
+
+    def transform_key(self) -> TransformKey | None:
+        """Return the transform for the engine (an offset in the evaluation unit)."""
+        t = self.transform
+        if isinstance(t, TransformWithOffset):
+            return OffsetTransform(t.name, t.offset.value)
+        return t
+
+    def to_request(self) -> MetricRequest:
+        """Return the metric request for the engine (values in the evaluation unit)."""
+        return MetricRequest(self.name, self.transform_key(), self.to_params())
+
     def output_name(self) -> str:
         """Column name for this metric's result."""
         if self.as_ is not None:
@@ -776,8 +817,8 @@ class MetricSpec(_Model):
             name = f"{name}_{self.side or 'primary'}"
         if self.values is not None:
             name = f"{name}_{self.values.primary}"
-        if self.transform is not None:
-            return f"{name}_{self.transform.value}"
+        if self.transform_name is not None:
+            return f"{name}_{self.transform_name.value}"
         return name
 
 

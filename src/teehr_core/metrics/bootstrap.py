@@ -32,7 +32,7 @@ import numpy.typing as npt
 from teehr_core.metrics.registry import (
     METRICS,
     MetricRequest,
-    Transform,
+    TransformKey,
     compute_metrics,
     transformed,
 )
@@ -540,7 +540,7 @@ _CENTERED = {
 
 def state_intervals(
     requests: Sequence[MetricRequest],
-    states: dict[Transform | None, dict[str, FloatArray]],
+    states: dict[TransformKey | None, dict[str, FloatArray]],
     gid: IntArray,
     unit: IntArray,
     group_keys: Sequence[Sequence[Any]],
@@ -573,7 +573,7 @@ def state_intervals(
         t: [*STATE_COLUMNS, *(c for c in st if c.startswith(ADDITIVE))] for t, st in states.items()
     }
     sketched = {t: [c for c in st if c.startswith(SKETCH)] for t, st in states.items()}
-    merged: dict[Transform | None, dict[str, Any]] = {
+    merged: dict[TransformKey | None, dict[str, Any]] = {
         t: {c: np.full((reps, n_groups), np.nan) for c in names[t]} for t in states
     }
     for t in states:

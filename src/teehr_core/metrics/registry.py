@@ -25,9 +25,12 @@ __all__ = [
     "TRANSFORM_ALIASES",
     "Metric",
     "MetricRequest",
+    "OffsetTransform",
     "Params",
     "Transform",
+    "TransformKey",
     "aliases_of",
+    "base_transform",
     "canonical_name",
     "compute_grouped",
     "compute_metrics",
@@ -54,6 +57,28 @@ class Transform(StrEnum):
 
 #: Other names a spec may give a transform.
 TRANSFORM_ALIASES: dict[str, Transform] = {"inv": Transform.RECIPROCAL}
+
+
+@dataclass(frozen=True)
+class OffsetTransform:
+    """A transform of the values shifted first: ``transform(x + offset)``.
+
+    ``offset`` is in the evaluation unit, e.g. ``log(Q + 0.01)`` keeps zero flows a
+    plain ``log`` would leave out (shared spec: a transform's ``offset``).
+    """
+
+    transform: Transform
+    offset: float
+
+
+#: What a :class:`MetricRequest` is transformed by: a transform, with or without an offset.
+TransformKey = Transform | OffsetTransform
+
+
+def base_transform(key: TransformKey | None) -> Transform | None:
+    """Return the transform of ``key`` without its offset."""
+    return key.transform if isinstance(key, OffsetTransform) else key
+
 
 _TRANSFORMS: dict[Transform, Callable[[FloatArray], FloatArray]] = {
     Transform.LOG: np.log,
@@ -999,7 +1024,7 @@ class MetricRequest:
     """One metric to compute in a stage, optionally on transformed values."""
 
     name: str
-    transform: Transform | None = None
+    transform: TransformKey | None = None
     params: Params = Params()
 
     def columns(self) -> set[str]:
@@ -1008,12 +1033,14 @@ class MetricRequest:
 
 
 def transformed(
-    obs: FloatArray, pred: FloatArray, transform: Transform | None
+    obs: FloatArray, pred: FloatArray, transform: TransformKey | None
 ) -> tuple[FloatArray, FloatArray, npt.NDArray[np.bool_]]:
     """Return ``obs`` and ``pred`` after ``transform``, and which pairs stay (both finite)."""
     keep: npt.NDArray[np.bool_] = np.isfinite(obs) & np.isfinite(pred)
     if transform is not None:
-        fn = _TRANSFORMS[transform]
+        if isinstance(transform, OffsetTransform):
+            obs, pred = obs + transform.offset, pred + transform.offset
+        fn = _TRANSFORMS[base_transform(transform)]  # type: ignore[index]
         with np.errstate(invalid="ignore", divide="ignore", over="ignore"):
             obs, pred = fn(obs), fn(pred)
         keep &= np.isfinite(obs) & np.isfinite(pred)
@@ -1025,7 +1052,7 @@ def _stats(
     pred: FloatArray,
     gid: IntArray,
     n_groups: int,
-    transform: Transform | None,
+    transform: TransformKey | None,
     weights: FloatArray | None,
     columns: dict[str, FloatArray] | None,
 ) -> GroupStats:
@@ -1059,7 +1086,7 @@ def compute_metrics(
     marks undefined results. Timestamps are epoch seconds.
     """
     out: dict[MetricRequest, FloatArray] = {}
-    by_transform: dict[Transform | None, list[MetricRequest]] = {}
+    by_transform: dict[TransformKey | None, list[MetricRequest]] = {}
     for req in requests:
         by_transform.setdefault(req.transform, []).append(req)
     for transform, reqs in by_transform.items():
@@ -1075,7 +1102,7 @@ def compute_grouped(
     sim: FloatArray,
     gid: IntArray,
     n_groups: int,
-    transform: Transform | None = None,
+    transform: TransformKey | None = None,
 ) -> FloatArray | IntArray:
     """Compute metric ``name`` for each group (one value per group; NaN = undefined)."""
     req = MetricRequest(name, transform)
