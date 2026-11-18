@@ -596,6 +596,49 @@ class DuckDBBackend:
         return f"SELECT * FROM ({merged}) ORDER BY {order}, __transform"
 
     @staticmethod
+    def merge_state_by_bucket_sql(spec: EvaluationSpec, source: str) -> str:
+        """Return SQL merging state rows per group, transform and bucket (and DM lag).
+
+        For the state of a run done in shards: each shard computed a part of the groups
+        spanning series (e.g. by lead time). The result is state like any other
+        (``__bucket`` kept), so it merges further and an incremental run can still
+        replace some of its buckets.
+        """
+        keys = [*spec.aggregate[0].group_by, "__transform", "__bucket"]
+        dm = lit(DM_TRANSFORM)
+        merged = merge_sql(
+            keys,
+            f"(SELECT * FROM {source} WHERE __transform <> {dm})",
+            state_additive_columns(spec),
+        )
+        skill = spec.aggregate[0].skill
+        if skill is not None and skill.test is not None:
+            cols = ", ".join(q(k) for k in keys)
+            sums = ", ".join(f"sum({c}) AS {c}" for c in DM_SUMS)
+            merged = (
+                f"({merged}) UNION ALL BY NAME (SELECT {cols}, dm_lag, {sums} FROM {source} "
+                f"WHERE __transform = {dm} GROUP BY ALL)"
+            )
+        return merged
+
+    @staticmethod
+    def merge_state_by_bucket(spec: EvaluationSpec, state: pa.Table) -> pa.Table:
+        """Merge ``state`` (e.g. shards' parts) as :meth:`merge_state_by_bucket_sql` does.
+
+        The result has ``state``'s columns, in its order and types: one table can hold
+        both.
+        """
+        con = memory_connection()
+        try:
+            con.execute("SET TimeZone = 'UTC'")
+            register(con, "s", state)
+            cols = ", ".join(q(c) for c in state.column_names)
+            sql = f"SELECT {cols} FROM ({DuckDBBackend.merge_state_by_bucket_sql(spec, 's')})"
+            return arrow_table(con, sql).cast(state.schema)
+        finally:
+            con.close()
+
+    @staticmethod
     def merge_dm_sql(spec: EvaluationSpec, source: str) -> str | None:
         """Return SQL summing DM state rows per group and lag (None without a DM test)."""
         stage = spec.aggregate[0]
