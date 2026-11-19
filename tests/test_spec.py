@@ -292,13 +292,12 @@ def test_documented_functions_match_allow_list() -> None:
         check_expression(two_args.get(name, f"{name}(a)"))
 
 
-def test_documented_metrics_match_registry() -> None:
-    from teehr_core.metrics import METRICS
-
+def test_the_spec_guide_points_at_the_metrics_reference() -> None:
+    # The metrics are listed in docs/metrics.md, generated from the registry
+    # (tests/test_metrics_doc.py keeps it in step), not in the spec guide.
     text = Path(ROOT, "docs/spec/README.md").read_text()
-    table = text.split("| Name | Family | Aliases | Definition |")[1].split("\n\n")[0]
-    documented = re.findall(r"^\| `([a-z0-9_]+)` \| [a-z]+ \|", table, re.M)
-    assert documented == list(METRICS)
+    assert "](../metrics.md)" in text
+    assert "| Name | Family | Aliases | Definition |" not in text
 
 
 @pytest.mark.parametrize(
