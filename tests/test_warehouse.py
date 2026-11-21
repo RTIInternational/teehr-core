@@ -141,6 +141,21 @@ def test_merge_changes_only_provided_columns(catalog) -> None:
     ]
 
 
+def test_merging_unchanged_values_commits_nothing(catalog) -> None:
+    """An ingest that sets locations every batch doesn't rewrite the series table."""
+    columns = [
+        {"name": "series_key", "type": "string", "required": True},
+        {"name": "location_key", "type": "string"},
+    ]
+    table = create(catalog, "series", columns, ["series_key"], wh.Layout())
+    schema = wh.iceberg_schema(columns).as_arrow()
+    rows_ = pa.table({"series_key": ["a", "b"], "location_key": ["L1", "L2"]}, schema=schema)
+    wh.merge(table, rows_, ["series_key"], ["series_key", "location_key"])
+    before = state(table)
+    wh.merge(table.refresh(), rows_, ["series_key"], ["series_key", "location_key"])
+    assert not wh.changes(table, before).changed
+
+
 def test_commit_files_replaces_in_one_transaction(table) -> None:
     wh.upsert(table, rows(("old", 0, 1.0)))
     paths = [
