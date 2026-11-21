@@ -109,7 +109,9 @@ def merge(
 ) -> int | None:
     """Upsert where only the ``provided`` columns change; return the new snapshot's id.
 
-    A matched row keeps its current values in the others.
+    A matched row keeps its current values in the others; a row whose values don't change isn't
+    rewritten, and nothing is committed when none do (so setting the same locations each batch
+    doesn't look like a change to incremental runs).
     """
     current = table.scan(row_filter=create_match_filter(data, key_columns)).to_arrow()
     table.upsert(
