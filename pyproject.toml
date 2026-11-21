@@ -22,6 +22,8 @@ dependencies = [
 [project.optional-dependencies]
 # The spec engine: inputs, pairing, fields, filter and grouping as SQL.
 engine = ["duckdb>=1.2"]
+# The warehouse rules on Iceberg tables (teehr_core.warehouse): writers and change detection.
+iceberg = ["pyiceberg[pyarrow,pyiceberg-core]>=0.12,<0.13"]
 
 [project.urls]
 Repository = "https://github.com/RTIInternational/teehr-core"
@@ -32,6 +34,7 @@ dev = [
     "hypothesis>=6.100",
     "mypy>=1.13",
     "pytest>=8.3",
+    "pyiceberg[sql-sqlite]>=0.12,<0.13",  # warehouse tests: a local SQL catalog
     "pytz>=2024.1",  # DuckDB returns TIMESTAMPTZ to Python with it (tests only)
     "ruff>=0.8",
     "types-pyyaml>=6",
