@@ -9,6 +9,8 @@ a loaded :class:`pyiceberg.table.Table`.
 - :mod:`.conform`: fitting submitted rows to a dataset's columns, or saying why not.
 - :mod:`.write`: upserts, inserts of missing keys, merges, and files committed in one transaction.
 - :mod:`.changes`: which months of a timeseries changed since a recorded state of it.
+- :mod:`.build`: building a derived dataset into its table (also needs the ``engine``
+  extra; import it on its own).
 """
 
 from teehr_core.warehouse.changes import Changes, TableState, changes, table_state

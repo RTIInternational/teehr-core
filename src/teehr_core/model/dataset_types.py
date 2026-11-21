@@ -16,11 +16,15 @@ import pyarrow as pa
 
 __all__ = [
     "BBOX",
+    "CLIMATOLOGY",
     "COLUMN_TYPES",
     "CROSSWALK",
     "CROSSWALK_COLUMNS",
+    "DERIVED",
     "LAYER",
     "LAYER_COLUMNS",
+    "NAIVE_SCALE",
+    "PERCENTILES",
     "SERIES",
     "TABLE",
     "TIMESERIES",
@@ -29,6 +33,7 @@ __all__ = [
     "Column",
     "arrow_schema",
     "crosswalk_columns",
+    "derived_columns",
     "layer_columns",
     "series_columns",
     "timeseries_columns",
@@ -39,7 +44,13 @@ TIMESERIES = "timeseries"
 SERIES = "series"  # a timeseries' series table, created with it
 LAYER = "layer"  # locations: geometry + attributes
 CROSSWALK = "crosswalk"  # links between two series tables' series
-TYPED = (TIMESERIES, SERIES, LAYER, CROSSWALK)
+# Derived from an observed timeseries, per its series (role auxiliary; ADR-0019 in
+# teehr-cloud-core): built by teehr_core.derived, read by the engine.
+CLIMATOLOGY = "climatology"  # mean per series, day of year and hour
+PERCENTILES = "percentiles"  # values at fixed percentiles of each series' record
+NAIVE_SCALE = "naive_scale"  # mean |y(t) - y(t - lag)| per series and lag (MASE's scale)
+DERIVED = (CLIMATOLOGY, PERCENTILES, NAIVE_SCALE)
+TYPED = (TIMESERIES, SERIES, LAYER, CROSSWALK, *DERIVED)
 
 BBOX = ("bbox_xmin", "bbox_ymin", "bbox_xmax", "bbox_ymax")
 LAYER_COLUMNS = frozenset({"location_key", "name", "geometry", *BBOX})
@@ -153,3 +164,37 @@ def crosswalk_columns(extra: Iterable[Column] = ()) -> list[Column]:
         _col("right_key", "string", True, "A series key of the right series table"),
         *extra,
     ]
+
+
+def derived_columns(kind: str) -> tuple[list[Column], list[str]]:
+    """Return a derived dataset's columns and key (``kind``: one of :data:`DERIVED`)."""
+    series = _col("series_key", "string", True, "The observed series it's derived from")
+    if kind == CLIMATOLOGY:
+        columns = [
+            series,
+            _col("day_of_year", "int32", True, "1 to 366"),
+            _col("hour", "int32", True, "0 to 23, UTC"),
+            _col("value", "float64", True, "Mean of hourly means in the window"),
+            _col("count", "int64", True, "Hourly means averaged"),
+        ]
+        return columns, ["series_key", "day_of_year", "hour"]
+    if kind == PERCENTILES:
+        columns = [
+            series,
+            _col("percentile", "float64", True, "Non-exceedance percentile, 0 to 100"),
+            _col("value", "float64", True, "Value at the percentile, of hourly means"),
+            _col("count", "int64", True, "Hourly means it's of"),
+            _col("years", "float64", True, "Days with data / 365.25"),
+        ]
+        # No key: Iceberg can't key on a float column, and builds replace the table whole.
+        return columns, []
+    if kind == NAIVE_SCALE:
+        columns = [
+            series,
+            _col("lag", "string", True, "The lag as given (ISO 8601)"),
+            _col("lag_seconds", "int64", True, "The lag in seconds"),
+            _col("scale", "float64", True, "Mean absolute change over the lag"),
+            _col("count", "int64", True, "Differences averaged"),
+        ]
+        return columns, ["series_key", "lag_seconds"]
+    raise ValueError(f"not a derived kind: {kind!r} (one of {', '.join(DERIVED)})")
