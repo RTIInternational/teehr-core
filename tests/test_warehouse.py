@@ -185,36 +185,46 @@ def test_duplicate_keys() -> None:
 # Change detection.
 
 
+def state(table):
+    return wh.table_state(table.refresh())
+
+
 def test_months_of_each_kind_of_write(table) -> None:
-    """The KinD spike's sequence: an append, an upsert across a month boundary, a filtered
-    overwrite, a later month."""
+    """The KinD spike's sequence: an upsert across a month boundary, a filtered overwrite, a
+    later month."""
     wh.upsert(table, rows(*[("a", d, 1.0) for d in range(31)]))  # January
-    first = current(table)
+    first = state(table)
 
     wh.upsert(table, rows(*[("a", d, 2.0) for d in range(25, 35)]))  # Jan 26 - Feb 4
-    second = current(table)
-    jan_feb = wh.changes(table, first, second)
+    second = state(table)
+    jan_feb = wh.changes(table, first)
     assert jan_feb.months == ("2026-01", "2026-02")
     assert not jan_feb.added_only  # January's file was rewritten
 
     days = [("a", d, 3.0) for d in range(9, 14)]  # Jan 10 - 14
-    where = wh.key_range(rows(*days), KEY)
-    table.refresh().overwrite(rows(*days), overwrite_filter=where)
-    third = current(table)
-    assert wh.changes(table, second, third).months == ("2026-01",)
+    table.refresh().overwrite(rows(*days), overwrite_filter=wh.key_range(rows(*days), KEY))
+    third = state(table)
+    assert wh.changes(table, second).months == ("2026-01",)
 
-    june = wh.upsert(table, rows(("a", 160, 4.0)))
-    assert wh.changes(table, third, june).months == ("2026-06",)
+    wh.upsert(table, rows(("a", 160, 4.0)))
+    june = wh.changes(table, third)
+    assert june.months == ("2026-06",) and june.added_only
 
-    everything = wh.changes(table, first)  # up to the current snapshot
+    everything = wh.changes(table, first)
     assert everything.months == ("2026-01", "2026-02", "2026-06")
-    assert everything.commits >= 3
 
 
-def test_appends_are_added_only(catalog) -> None:
-    table = create(catalog)
+def test_as_of_a_pinned_snapshot(table) -> None:
+    wh.upsert(table, rows(("a", 0, 1.0)))
+    first = state(table)
+    pinned = wh.upsert(table, rows(("a", 40, 1.0)))
+    wh.upsert(table, rows(("a", 70, 1.0)))  # after the pin
+    assert wh.changes(table.refresh(), first, pinned).months == ("2026-02",)
+
+
+def test_appends_are_added_only(table) -> None:
     table.append(rows(("a", 0, 1.0)))
-    first = current(table)
+    first = state(table)
     table.refresh().append(rows(("b", 40, 1.0)))
     found = wh.changes(table, first)
     assert found.added_only and found.months == ("2026-02",) and found.changed
@@ -222,26 +232,79 @@ def test_appends_are_added_only(catalog) -> None:
 
 def test_nothing_changed(table) -> None:
     wh.upsert(table, rows(("a", 0, 1.0)))
-    found = wh.changes(table, current(table))
+    found = wh.changes(table, state(table))
     assert not found.changed and found.months == ()
 
 
-def test_unknown_when_history_is_gone(table) -> None:
+def test_survives_expired_snapshots(table) -> None:
+    """The point of comparing states: history between them can be gone."""
     wh.upsert(table, rows(("a", 0, 1.0)))
-    assert wh.changes(table, None).unknown == "no earlier snapshot to compare with"
-    found = wh.changes(table, 12345)
-    assert found.changed and "no longer in the table's history" in (found.unknown or "")
+    first = state(table)
+    wh.upsert(table, rows(("a", 40, 1.0)))
+    wh.upsert(table, rows(("a", 70, 1.0)))
+    table = table.refresh()
+    current = table.current_snapshot().snapshot_id
+    old = [s.snapshot_id for s in table.metadata.snapshots if s.snapshot_id != current]
+    table.maintenance.expire_snapshots().by_ids(old).commit()
+    table = table.refresh()
+    assert len(table.metadata.snapshots) == 1
+    assert wh.changes(table, first).months == ("2026-02", "2026-03")
 
 
-def test_tables_without_the_column_report_commits(catalog) -> None:
-    columns = [{"name": "series_key", "type": "string", "required": True}]
+def test_deletes_count_their_months(table) -> None:
+    wh.upsert(table, rows(("a", 0, 1.0), ("a", 40, 1.0)))
+    first = state(table)
+    table.refresh().delete(EqualTo("series_key", "a"))  # every row: no new files
+    found = wh.changes(table, first)
+    assert found.new_files == 0 and not found.added_only
+    assert found.months == ("2026-01", "2026-02")
+
+
+def test_a_rewrite_counts_as_changed_never_missed(table) -> None:
+    wh.upsert(table, rows(("a", 0, 1.0)))
+    first = state(table)
+    data = table.refresh().scan().to_arrow()
+    table.refresh().overwrite(data)  # the same rows, new files (as a compaction would)
+    assert wh.changes(table, first).months == ("2026-01",)
+
+
+def test_no_earlier_state(table) -> None:
+    assert wh.changes(table, None).unknown == "no earlier state to compare with"
+
+
+def test_empty_tables(table) -> None:
+    empty = state(table)
+    assert empty == wh.TableState(sequence=0)
+    wh.upsert(table, rows(("a", 0, 1.0)))
+    assert wh.changes(table, empty).months == ("2026-01",)
+
+
+def test_tables_without_the_column(catalog) -> None:
+    columns = [{"name": "series_key", "type": "string", "required": True},
+               {"name": "location_key", "type": "string"}]  # fmt: skip
     table = create(catalog, "series", columns, ["series_key"], wh.Layout())
     schema = wh.iceberg_schema(columns).as_arrow()
-    wh.insert_missing(table, pa.table({"series_key": ["a"]}, schema=schema))
-    first = current(table)
-    wh.insert_missing(table, pa.table({"series_key": ["a", "b"]}, schema=schema))
-    found = wh.changes(table, first)
-    assert found.commits == 1 and found.added_only and found.months == ()
+    wh.insert_missing(table, pa.table({"series_key": ["a"], "location_key": [None]}, schema=schema))
+    first = state(table)
+    wh.insert_missing(
+        table, pa.table({"series_key": ["a", "b"], "location_key": [None, None]}, schema=schema)
+    )
+    added = wh.changes(table, first)
+    assert added.changed and added.added_only and added.months == ()
+    second = state(table)
+    update = pa.table({"series_key": ["a"], "location_key": ["L1"]}, schema=schema)
+    wh.merge(table.refresh(), update, ["series_key"], ["series_key", "location_key"])
+    assert not wh.changes(table, second).added_only
+
+
+def test_state_round_trips_through_json(table) -> None:
+    import json
+
+    wh.upsert(table, rows(("a", 0, 1.0), ("a", 40, 1.0)))
+    recorded = state(table)
+    again = wh.TableState.from_json(json.loads(json.dumps(recorded.to_json())))
+    assert again == recorded
+    assert not wh.changes(table, again).changed
 
 
 def test_month_range_crosses_years() -> None:

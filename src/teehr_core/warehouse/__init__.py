@@ -8,10 +8,10 @@ a loaded :class:`pyiceberg.table.Table`.
 - :mod:`.layout`: a table's schema, partitioning, sort order and properties from declared columns.
 - :mod:`.conform`: fitting submitted rows to a dataset's columns, or saying why not.
 - :mod:`.write`: upserts, inserts of missing keys, merges, and files committed in one transaction.
-- :mod:`.changes`: which months of a timeseries changed between two snapshots.
+- :mod:`.changes`: which months of a timeseries changed since a recorded state of it.
 """
 
-from teehr_core.warehouse.changes import Changes, changes
+from teehr_core.warehouse.changes import Changes, TableState, changes, table_state
 from teehr_core.warehouse.conform import DataMismatch, conform, duplicate_keys, keep_unprovided
 from teehr_core.warehouse.layout import (
     COLUMN_TYPES,
@@ -40,6 +40,7 @@ __all__ = [
     "Changes",
     "DataMismatch",
     "Layout",
+    "TableState",
     "changes",
     "commit_files",
     "conform",
@@ -53,6 +54,7 @@ __all__ = [
     "partition_spec",
     "sort_order",
     "table_properties",
+    "table_state",
     "upsert",
     "write_file",
 ]
