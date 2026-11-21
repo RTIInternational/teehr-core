@@ -855,7 +855,7 @@ METRICS: dict[str, Metric] = {
         Metric(
             "normalized_mean_absolute_error",
             lambda s, p: _div(_mae(s), _normalizer(s, p)),
-            "MAE / normalizer: mean(obs) by default; normalize_by range_obs (max - min), "
+            "MAE / normalizer: mean(obs) by default; normalize_by range_primary (max - min), "
             "a number (e.g. installed capacity) or a column. Null if the normalizer is 0.",
             "relative",
             params=frozenset({"normalize_by"}),
