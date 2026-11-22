@@ -230,3 +230,28 @@ def test_builds_are_from_observations_into_their_kind(catalog, source) -> None:
         build_derived(forecast, target(catalog), NAIVE_SCALE, ["a"])
     with pytest.raises(ValueError, match="not a naive_scale"):
         build_derived(source, target(catalog, PERCENTILES, "p"), NAIVE_SCALE, ["a"])
+
+
+def test_a_long_build_loads_its_tables_again(catalog, source) -> None:
+    table = target(catalog)
+    loads: list[str] = []
+
+    def reload(t):
+        loads.append(_name_of(t))
+        return catalog.load_table(t.name())
+
+    build_derived(source, table, NAIVE_SCALE, ["a", "b", "c"], params={"lags": ["PT1H"]},
+                  batch_series=1, reload=reload, reload_every=0)  # fmt: skip
+    # Before every batch (both tables: always stale at reload_every=0), then the target
+    # before the commit.
+    assert loads == ["obs", "obs_naive_scale"] * 3 + ["obs_naive_scale"]
+    assert table.refresh().scan().to_arrow().num_rows == 3
+
+    loads.clear()
+    build_derived(source, table, NAIVE_SCALE, ["a", "b"], params={"lags": ["PT1H"]},
+                  batch_series=1, reload=reload)  # fmt: skip
+    assert loads == ["obs_naive_scale"]  # a quick build: only before its commit
+
+
+def _name_of(table) -> str:
+    return table.name()[-1]
