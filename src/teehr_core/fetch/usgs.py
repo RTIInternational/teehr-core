@@ -78,19 +78,21 @@ def _request(service: Service, sites: list[str], start: datetime, end: datetime)
 
 
 def _one_series_per_site(frame: pd.DataFrame) -> pd.DataFrame:
-    """Keep one time series per site: the one with the most values.
+    """Keep one time series per site: the one still reporting, then the one with most values.
 
-    A site may have several (e.g. two sensors), which would repeat its times.
+    A site may have several, which would repeat its times. Usually an old series and its
+    current replacement, overlapping for a while: the one with the latest value is kept.
     """
     if "time_series_id" not in frame or frame.empty:
         return frame
-    counts = frame.groupby(["monitoring_location_id", "time_series_id"]).size()
-    several = counts.groupby(level=0).size()
+    stats = frame.groupby(["monitoring_location_id", "time_series_id"])["time"].agg(["max", "size"])
+    several = stats.groupby(level=0).size()
     several = several[several > 1]
     if several.empty:
         return frame
-    kept = counts.sort_values(ascending=False).groupby(level=0).head(1).index
-    logger.warning("sites with more than one discharge time series (kept the longest): %s",
+    ranked = stats.sort_values(["max", "size"], ascending=False)
+    kept = ranked.groupby(level=0).head(1).index
+    logger.warning("sites with more than one discharge time series (kept the latest): %s",
                    ", ".join(several.index))  # fmt: skip
     keep = frame.set_index(["monitoring_location_id", "time_series_id"]).index.isin(kept)
     return frame[keep]

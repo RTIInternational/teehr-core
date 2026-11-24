@@ -72,6 +72,16 @@ def test_one_time_series_per_site(caplog):
     assert "01646500" in caplog.text
 
 
+def test_the_series_still_reporting_wins_over_a_longer_old_one():
+    rows = usgs.to_rows(frame(
+        ("01646500", "2026-11-20T00:00Z", 1.0, "old"),
+        ("01646500", "2026-11-20T01:00Z", 2.0, "old"),
+        ("01646500", "2026-11-20T00:00Z", 8.0, "current"),  # fewer values ...
+        ("01646500", "2026-11-20T03:00Z", 9.0, "current"),  # ... but the latest
+    ))  # fmt: skip
+    assert [r[2] for r in as_tuples(rows)] == [round(v * usgs.CFS_TO_M3S, 4) for v in (8.0, 9.0)]
+
+
 def test_nothing_is_an_empty_batch():
     assert usgs.to_rows(pd.DataFrame()).num_rows == 0
     assert usgs.to_rows(None).schema == usgs.SCHEMA
