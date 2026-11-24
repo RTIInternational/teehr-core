@@ -142,3 +142,30 @@ def test_live():
     rows = next(usgs.fetch_streamflow(["01646500", "02339495"], START, END))
     assert set(rows["series_key"].to_pylist()) == {"usgs-01646500", "usgs-02339495"}
     assert rows.num_rows == 4
+
+
+def test_bulk_files_give_the_same_rows(monkeypatch):
+    def bulk(service, site):
+        if site == "missing":
+            return None
+        api = frame(("01646500", "2026-11-19T23:00Z", 1.0), ("01646500", "2026-11-20T00:00Z", 2.0),
+                    ("01646500", "2026-11-20T02:00Z", 3.0))  # fmt: skip
+        api["value"] = api["value"].astype(str)  # the files' values are strings
+        api["approval_status"] = "Approved"
+        api["qualifier"] = [None, ["ESTIMATED"], None]
+        return api
+
+    monkeypatch.setattr(usgs, "_bulk_file", bulk)
+    tables = list(usgs.read_bulk(["01646500", "missing"], START, END))
+    assert [t.num_rows for t in tables] == [1, 0]  # 2026-11-20 00:00 up to 02:00
+    assert tables[0].to_pylist()[0]["quality"] == "Approved,ESTIMATED"
+    assert tables[0].schema == usgs.SCHEMA
+
+
+@pytest.mark.skipif(not os.environ.get("TEEHR_LIVE_USGS"), reason="set TEEHR_LIVE_USGS=1")
+def test_live_bulk_daily():
+    """A real (small) daily file: means only, at midnight UTC."""
+    start, end = datetime(2026, 1, 1, tzinfo=UTC), datetime(2026, 1, 11, tzinfo=UTC)
+    rows = next(usgs.read_bulk(["01646500"], start, end, service="dv"))
+    assert rows.num_rows == 10
+    assert {t.hour for t in rows["value_time"].to_pylist()} == {0}

@@ -33,8 +33,12 @@ UNIT = "m3/s"
 CFS_TO_M3S = 0.3048**3
 #: Values the USGS uses for "no data".
 NODATA = (-999999.0, -99999.0, -9999.0, -999.0)
+#: Daily mean (the statistic daily values are kept for).
+DAILY_MEAN = "00003"
 #: Sites per request.
 BATCH_SITES = 100
+#: A site's whole record, all parameters, as Parquet (``service``: continuous or daily).
+BULK_URL = "https://api.waterdata.usgs.gov/stac-files/{service}/USGS-{site}/USGS-{site}.parquet"
 
 Service = Literal["iv", "dv"]
 
@@ -87,7 +91,7 @@ def _request(service: Service, sites: list[str], start: datetime, end: datetime)
         time = f"{start:%Y-%m-%d}/{last:%Y-%m-%d}"
         frame, _ = waterdata.get_daily(
             monitoring_location_id=ids, parameter_code=PARAMETER_CODE, time=time,
-            skip_geometry=True,
+            statistic_id=DAILY_MEAN, skip_geometry=True,
         )  # fmt: skip
     return frame
 
@@ -125,7 +129,7 @@ def to_rows(frame: pd.DataFrame, service: Service = "iv", hourly: bool = True) -
     frame = _one_series_per_site(frame)
     times = pd.to_datetime(frame["time"])
     times = times.dt.tz_localize("UTC") if times.dt.tz is None else times.dt.tz_convert("UTC")
-    values = frame["value"].astype("float64")
+    values = pd.to_numeric(frame["value"], errors="coerce").astype("float64")  # files: strings
     keep = values.notna() & ~values.isin(NODATA)
     if service == "iv" and hourly:
         keep &= (times.dt.minute == 0) & (times.dt.second == 0)
@@ -165,4 +169,62 @@ def fetch_streamflow(
         rows = to_rows(_request(service, batch, start, end), service, hourly)
         logger.info("USGS %s: sites %d-%d of %d: %d rows", service, i + 1, i + len(batch),
                     len(sites), rows.num_rows)  # fmt: skip
+        yield rows
+
+
+def _bulk_file(service: Service, site: str) -> pd.DataFrame | None:
+    """Return a site's discharge from its bulk Parquet file (None: no file)."""
+    import io
+    import urllib.error
+    import urllib.request
+
+    import pyarrow.parquet as pq
+
+    url = BULK_URL.format(service="continuous" if service == "iv" else "daily",
+                          site=site_number(site))  # fmt: skip
+    try:
+        with urllib.request.urlopen(url, timeout=300) as resp:
+            data = resp.read()
+    except urllib.error.HTTPError as err:
+        if err.code == 404:
+            return None
+        raise
+    keep = [("parameter_code", "=", PARAMETER_CODE)]
+    if service == "dv":
+        keep.append(("statistic_id", "=", DAILY_MEAN))
+    return pq.read_table(io.BytesIO(data), filters=keep).to_pandas()
+
+
+def read_bulk(
+    sites: Iterable[str],
+    start: datetime | None = None,
+    end: datetime | None = None,
+    *,
+    service: Service = "iv",
+    hourly: bool = True,
+) -> Iterator[pa.Table]:
+    """Yield each site's streamflow from its bulk file (:data:`BULK_URL`), one site at a time.
+
+    For backfills and reloads: a site's whole record in one download, rather than paging the
+    API. The rows are :func:`fetch_streamflow`'s, from ``start`` up to (not including) ``end``
+    (default: the whole file). The files lag the API (continuous values by months), so
+    follow a backfill with :func:`fetch_streamflow` from where they end. A site without a
+    file yields an empty table.
+    """
+    sites = list(dict.fromkeys(sites))
+    for i, site in enumerate(sites, 1):
+        frame = _bulk_file(service, site)
+        if frame is not None and not frame.empty and (start or end):
+            times = pd.to_datetime(frame["time"], utc=True)
+            inside = pd.Series(True, index=frame.index)
+            if start:
+                inside &= times >= start
+            if end:
+                inside &= times < end
+            frame = frame[inside]
+        rows = to_rows(frame, service, hourly)
+        if frame is None:
+            logger.warning("USGS %s: no bulk file for %s", service, site)
+        logger.info("USGS %s bulk: site %d of %d (%s): %d rows", service, i, len(sites),
+                    site, rows.num_rows)  # fmt: skip
         yield rows
