@@ -199,7 +199,9 @@ def _bulk_file(service: Service, site: str) -> pd.DataFrame | None:
     keep = [("parameter_code", "=", PARAMETER_CODE)]
     if service == "dv":
         keep.append(("statistic_id", "=", DAILY_MEAN))
-    return pq.read_table(io.BytesIO(data), filters=keep).to_pandas()
+    columns = ["time_series_id", "monitoring_location_id", "time", "value", "approval_status",
+               "qualifier"]  # fmt: skip
+    return pq.read_table(io.BytesIO(data), columns=columns, filters=keep).to_pandas()
 
 
 def read_bulk(

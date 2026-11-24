@@ -155,3 +155,24 @@ def test_combine_joins_small_batches():
     batches = [rows(("a", 0, 1.0)), rows(), rows(("b", 0, 2.0), ("c", 0, 3.0)), rows(("d", 0, 4.0))]
     assert [t.num_rows for t in wh.combine(batches, rows=2)] == [3, 1]
     assert list(wh.combine([rows()])) == []
+
+
+def test_staged_months_round_trip(tmp_path):
+    staged = wh.stage_by_month([rows(("a", 0, 1.0), ("a", 24, 2.0)), rows(("b", 1, 3.0))],
+                               str(tmp_path / "stage"))  # fmt: skip
+    assert staged == 3
+    months = list(wh.staged_months(str(tmp_path / "stage")))
+    assert [sorted(m["series_key"].to_pylist()) for m in months] == [["a", "b"], ["a"]]
+    only = list(wh.staged_months(str(tmp_path / "stage"), months=["2026-02"]))
+    assert [m.num_rows for m in only] == [1]
+    assert list(wh.staged_months(str(tmp_path / "nothing"))) == []
+
+
+def test_replace_months_replaces_whole_months(catalog):
+    write_timeseries(catalog, "p", "flow", rows(("a", 0, 1.0), ("b", 1, 2.0), ("a", 24, 9.0)),
+                     producer="test")  # fmt: skip
+    written = write_timeseries(catalog, "p", "flow", rows(("a", 2, 5.0)), producer="test",
+                               replace_months=True)  # fmt: skip
+    assert written.months == ["2026-01"]
+    # January is only the new row (b's is gone); February is untouched.
+    assert [(r["series_key"], r["value"]) for r in stored(catalog)] == [("a", 5.0), ("a", 9.0)]
