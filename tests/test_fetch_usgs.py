@@ -54,6 +54,16 @@ def test_rows_on_the_hour_in_m3s_without_nodata():
     assert len(usgs.to_rows(frame(("01646500", "2026-11-20T00:15Z", 1.0)), hourly=False)) == 1
 
 
+def test_quality_is_approval_then_qualifiers():
+    assert usgs.quality("Provisional", None) == "Provisional"
+    assert usgs.quality("Approved", ["ESTIMATED", "ICE"]) == "Approved,ESTIMATED,ICE"
+    assert usgs.quality(None, float("nan")) is None
+    api = frame(("01646500", "2026-11-20T00:00Z", 1.0), ("01646500", "2026-11-20T01:00Z", 2.0))
+    api["approval_status"] = ["Approved", "Provisional"]
+    api["qualifier"] = [["ESTIMATED"], None]
+    assert usgs.to_rows(api)["quality"].to_pylist() == ["Approved,ESTIMATED", "Provisional"]
+
+
 def test_daily_values_at_midnight_utc():
     rows = usgs.to_rows(frame(("01646500", "2026-11-18", 1610.0), daily=True), service="dv")
     assert as_tuples(rows) == [
@@ -110,7 +120,7 @@ def test_fetched_rows_write(monkeypatch, tmp_path):
 
     catalog = SqlCatalog("t", uri=f"sqlite:///{tmp_path}/c.db", warehouse=f"file://{tmp_path}/w")
     catalog.create_namespace("public")
-    columns, key = timeseries_columns([], "instant")
+    columns, key = timeseries_columns(["quality"], "instant")
     for name, cols, k, props in (
         ("usgs_streamflow", columns, key, {"teehr.type": "timeseries", "teehr.unit": usgs.UNIT,
                                            "teehr.series_table": "usgs_streamflow_series"}),

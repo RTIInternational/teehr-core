@@ -1,8 +1,9 @@
 """USGS streamflow observations, from the USGS Water Data API (``dataretrieval.waterdata``).
 
-Rows are ``series_key`` (``usgs-<site number>``, the gauge's location key), ``value_time`` (UTC)
-and ``value`` in m3/s (:data:`UNIT`), a batch of sites at a time. As the legacy ingest did: no-data
-values are dropped and, for instantaneous values, only those on the hour are kept.
+Rows are ``series_key`` (``usgs-<site number>``, the gauge's location key), ``value_time`` (UTC),
+``value`` in m3/s (:data:`UNIT`) and ``quality`` (:func:`quality`), a batch of sites at a time.
+As the legacy ingest did: no-data values are dropped and, for instantaneous values, only those
+on the hour are kept. A dataset without a ``quality`` column takes the rows without it.
 
 Set ``API_USGS_PAT`` (a key from https://api.waterdata.usgs.gov/signup/) for the API's higher
 rate limits; without it, small requests still work.
@@ -41,7 +42,21 @@ SCHEMA = pa.schema([
     pa.field("series_key", pa.string(), nullable=False),
     pa.field("value_time", pa.timestamp("us", "UTC"), nullable=False),
     pa.field("value", pa.float64()),
+    pa.field("quality", pa.string()),
 ])  # fmt: skip
+
+
+def quality(approval_status: object, qualifier: object) -> str | None:
+    """Return a value's quality: its approval status then its qualifiers, comma-separated.
+
+    E.g. ``Provisional``, ``Approved,ESTIMATED`` (the API's own words). None: neither given.
+    """
+    parts = [approval_status] if isinstance(approval_status, str) and approval_status else []
+    if isinstance(qualifier, str):
+        parts += [qualifier] if qualifier else []
+    elif isinstance(qualifier, Iterable):  # a list or array (None or NaN: none)
+        parts += [str(q) for q in qualifier if q]
+    return ",".join(parts) or None
 
 
 def site_number(site: str) -> str:
@@ -101,7 +116,8 @@ def _one_series_per_site(frame: pd.DataFrame) -> pd.DataFrame:
 def to_rows(frame: pd.DataFrame, service: Service = "iv", hourly: bool = True) -> pa.Table:
     """Return the API's rows as v1 timeseries rows (:data:`SCHEMA`, m3/s).
 
-    The API's rows are ``monitoring_location_id``, ``time`` and ``value`` in ft3/s. No-data
+    The API's rows are ``monitoring_location_id``, ``time``, ``value`` in ft3/s,
+    ``approval_status`` and ``qualifier``. No-data
     values are dropped and, for instantaneous values with ``hourly``, those not on the hour.
     """
     if frame is None or frame.empty:
@@ -113,10 +129,15 @@ def to_rows(frame: pd.DataFrame, service: Service = "iv", hourly: bool = True) -
     keep = values.notna() & ~values.isin(NODATA)
     if service == "iv" and hourly:
         keep &= (times.dt.minute == 0) & (times.dt.second == 0)
+    status = frame["approval_status"] if "approval_status" in frame else [None] * len(frame)
+    qualifiers = frame["qualifier"] if "qualifier" in frame else [None] * len(frame)
+    flags = pd.Series([quality(s, q) for s, q in zip(status, qualifiers, strict=True)],
+                      index=frame.index, dtype="object")  # fmt: skip
     out = pd.DataFrame({
         "series_key": frame["monitoring_location_id"].map(series_key)[keep],
         "value_time": times[keep],
         "value": values[keep] * CFS_TO_M3S,
+        "quality": flags[keep],
     })  # fmt: skip
     out = out.drop_duplicates(["series_key", "value_time"])
     return pa.Table.from_pandas(out, schema=SCHEMA, preserve_index=False)
