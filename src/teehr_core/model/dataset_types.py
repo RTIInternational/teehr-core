@@ -105,7 +105,8 @@ def timeseries_columns(
 ) -> tuple[list[Column], list[str]]:
     """Return a timeseries dataset's columns and key.
 
-    ``optional``: any of ``reference_time``, ``member``, ``quantile``, ``quality``.
+    ``optional``: any of ``reference_time``, ``member``, ``quantile``, ``approval_status``,
+    ``qualifier``.
     ``period_form`` ``absolute`` adds the window columns. ``extra``: the dataset's own.
     """
     on = set(optional)
@@ -118,8 +119,11 @@ def timeseries_columns(
     if "quantile" in on:
         columns.append(_col("quantile", "decimal(5,4)", True, "Quantile, 0 to 1"))
     columns.append(_col("value", "float64", False, "Null: a missing value"))
-    if "quality" in on:
-        columns.append(_col("quality", "string", False, "The source's code(s)"))
+    if "approval_status" in on:
+        columns.append(_col("approval_status", "string", False,
+                            "The source's review state (e.g. Provisional, Approved)"))  # fmt: skip
+    if "qualifier" in on:
+        columns.append(_col("qualifier", "string", False, "The source's code(s), comma-separated"))
     if period_form == "absolute":
         columns.append(_col("period_start", "timestamptz", True, "Window start"))
         columns.append(_col("period_end", "timestamptz", True, "Window end"))

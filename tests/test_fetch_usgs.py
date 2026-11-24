@@ -54,14 +54,15 @@ def test_rows_on_the_hour_in_m3s_without_nodata():
     assert len(usgs.to_rows(frame(("01646500", "2026-11-20T00:15Z", 1.0)), hourly=False)) == 1
 
 
-def test_quality_is_approval_then_qualifiers():
-    assert usgs.quality("Provisional", None) == "Provisional"
-    assert usgs.quality("Approved", ["ESTIMATED", "ICE"]) == "Approved,ESTIMATED,ICE"
-    assert usgs.quality(None, float("nan")) is None
+def test_approval_status_and_qualifiers():
+    assert usgs.qualifier(["ESTIMATED", "ICE"]) == "ESTIMATED,ICE"
+    assert usgs.qualifier(None) is None and usgs.qualifier(float("nan")) is None
     api = frame(("01646500", "2026-11-20T00:00Z", 1.0), ("01646500", "2026-11-20T01:00Z", 2.0))
     api["approval_status"] = ["Approved", "Provisional"]
     api["qualifier"] = [["ESTIMATED"], None]
-    assert usgs.to_rows(api)["quality"].to_pylist() == ["Approved,ESTIMATED", "Provisional"]
+    rows = usgs.to_rows(api)
+    assert rows["approval_status"].to_pylist() == ["Approved", "Provisional"]
+    assert rows["qualifier"].to_pylist() == ["ESTIMATED", None]
 
 
 def test_daily_values_at_midnight_utc():
@@ -120,7 +121,7 @@ def test_fetched_rows_write(monkeypatch, tmp_path):
 
     catalog = SqlCatalog("t", uri=f"sqlite:///{tmp_path}/c.db", warehouse=f"file://{tmp_path}/w")
     catalog.create_namespace("public")
-    columns, key = timeseries_columns(["quality"], "instant")
+    columns, key = timeseries_columns(["approval_status", "qualifier"], "instant")
     for name, cols, k, props in (
         ("usgs_streamflow", columns, key, {"teehr.type": "timeseries", "teehr.unit": usgs.UNIT,
                                            "teehr.series_table": "usgs_streamflow_series"}),
@@ -158,7 +159,8 @@ def test_bulk_files_give_the_same_rows(monkeypatch):
     monkeypatch.setattr(usgs, "_bulk_file", bulk)
     tables = list(usgs.read_bulk(["01646500", "missing"], START, END))
     assert [t.num_rows for t in tables] == [1, 0]  # 2026-11-20 00:00 up to 02:00
-    assert tables[0].to_pylist()[0]["quality"] == "Approved,ESTIMATED"
+    assert tables[0].to_pylist()[0]["approval_status"] == "Approved"
+    assert tables[0].to_pylist()[0]["qualifier"] == "ESTIMATED"
     assert tables[0].schema == usgs.SCHEMA
 
 

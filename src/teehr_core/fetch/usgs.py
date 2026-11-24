@@ -1,9 +1,10 @@
 """USGS streamflow observations, from the USGS Water Data API (``dataretrieval.waterdata``).
 
 Rows are ``series_key`` (``usgs-<site number>``, the gauge's location key), ``value_time`` (UTC),
-``value`` in m3/s (:data:`UNIT`) and ``quality`` (:func:`quality`), a batch of sites at a time.
-As the legacy ingest did: no-data values are dropped and, for instantaneous values, only those
-on the hour are kept. A dataset without a ``quality`` column takes the rows without it.
+``value`` in m3/s (:data:`UNIT`), ``approval_status`` (``Provisional`` or ``Approved``) and
+``qualifier`` (:func:`qualifier`), a batch of sites at a time. As the legacy ingest did: no-data
+values are dropped and, for instantaneous values, only those on the hour are kept. For a dataset
+without those optional columns, drop them before writing.
 
 Set ``API_USGS_PAT`` (a key from https://api.waterdata.usgs.gov/signup/) for the API's higher
 rate limits; without it, small requests still work.
@@ -46,20 +47,21 @@ SCHEMA = pa.schema([
     pa.field("series_key", pa.string(), nullable=False),
     pa.field("value_time", pa.timestamp("us", "UTC"), nullable=False),
     pa.field("value", pa.float64()),
-    pa.field("quality", pa.string()),
+    pa.field("approval_status", pa.string()),
+    pa.field("qualifier", pa.string()),
 ])  # fmt: skip
 
 
-def quality(approval_status: object, qualifier: object) -> str | None:
-    """Return a value's quality: its approval status then its qualifiers, comma-separated.
+def qualifier(codes: object) -> str | None:
+    """Return a value's qualifiers comma-separated, e.g. ``ESTIMATED,ICE`` (None: none).
 
-    E.g. ``Provisional``, ``Approved,ESTIMATED`` (the API's own words). None: neither given.
+    The API gives them as a list (in files, an array; None or NaN for none).
     """
-    parts = [approval_status] if isinstance(approval_status, str) and approval_status else []
-    if isinstance(qualifier, str):
-        parts += [qualifier] if qualifier else []
-    elif isinstance(qualifier, Iterable):  # a list or array (None or NaN: none)
-        parts += [str(q) for q in qualifier if q]
+    parts: list[str] = []
+    if isinstance(codes, str):
+        parts += [codes] if codes else []
+    elif isinstance(codes, Iterable):
+        parts += [str(q) for q in codes if q]
     return ",".join(parts) or None
 
 
@@ -133,15 +135,20 @@ def to_rows(frame: pd.DataFrame, service: Service = "iv", hourly: bool = True) -
     keep = values.notna() & ~values.isin(NODATA)
     if service == "iv" and hourly:
         keep &= (times.dt.minute == 0) & (times.dt.second == 0)
-    status = frame["approval_status"] if "approval_status" in frame else [None] * len(frame)
-    qualifiers = frame["qualifier"] if "qualifier" in frame else [None] * len(frame)
-    flags = pd.Series([quality(s, q) for s, q in zip(status, qualifiers, strict=True)],
-                      index=frame.index, dtype="object")  # fmt: skip
+    none = pd.Series([None] * len(frame), index=frame.index, dtype="object")
+    if "approval_status" in frame:
+        status = (
+            frame["approval_status"].astype("object").where(frame["approval_status"].notna(), None)
+        )
+    else:
+        status = none
+    codes = frame["qualifier"].map(qualifier) if "qualifier" in frame else none
     out = pd.DataFrame({
         "series_key": frame["monitoring_location_id"].map(series_key)[keep],
         "value_time": times[keep],
         "value": values[keep] * CFS_TO_M3S,
-        "quality": flags[keep],
+        "approval_status": status[keep],
+        "qualifier": codes[keep],
     })  # fmt: skip
     out = out.drop_duplicates(["series_key", "value_time"])
     return pa.Table.from_pandas(out, schema=SCHEMA, preserve_index=False)

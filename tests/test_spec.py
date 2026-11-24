@@ -182,7 +182,7 @@ def test_dataset_references_accept_names(where: str, ref: str) -> None:
         "log10(primary_value) + ln(secondary_value) + log(2, primary_value) > 0",
         "CAST(member AS INT) = 1 AND extract(month FROM value_time) = 6",
         "CASE WHEN primary_value > 1 THEN 'hi' ELSE 'lo' END",
-        "coalesce(primary_quality, '') LIKE 'A%'",
+        "coalesce(primary_approval_status, '') LIKE 'A%'",
         "abs(secondary_value - primary_value) / greatest(primary_value, 1)",
         "value_time >= TIMESTAMP '2026-10-01 00:00:00+00'",
         "primary_value % 2 = 0 AND lower(primary_series_key) LIKE 'usgs-%'",
