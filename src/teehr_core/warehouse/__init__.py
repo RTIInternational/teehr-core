@@ -17,7 +17,13 @@ a loaded :class:`pyiceberg.table.Table`.
 
 from teehr_core.warehouse.changes import Changes, TableState, changes, table_state
 from teehr_core.warehouse.conform import DataMismatch, conform, duplicate_keys, keep_unprovided
-from teehr_core.warehouse.ingest import Written, columns_of, write_timeseries
+from teehr_core.warehouse.ingest import (
+    Written,
+    columns_of,
+    combine,
+    location_keys,
+    write_timeseries,
+)
 from teehr_core.warehouse.layout import (
     COLUMN_TYPES,
     LAYOUT_DEFAULTS,
@@ -49,6 +55,7 @@ __all__ = [
     "Written",
     "changes",
     "columns_of",
+    "combine",
     "commit_files",
     "conform",
     "duplicate_keys",
@@ -57,6 +64,7 @@ __all__ = [
     "keep_unprovided",
     "key_columns",
     "key_range",
+    "location_keys",
     "merge",
     "partition_spec",
     "sort_order",

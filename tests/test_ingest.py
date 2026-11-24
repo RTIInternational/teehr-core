@@ -130,3 +130,28 @@ def test_columns_of_round_trips_declared_columns(catalog):
     schema = wh.iceberg_schema(columns)
     table = catalog.create_table(("p", "fc"), schema=schema)
     assert columns_of(table) == declared
+
+
+def test_location_keys_from_the_layer(catalog):
+    from teehr_core.model.dataset_types import layer_columns
+
+    attr = {"name": "is_active", "type": "boolean", "required": False, "doc": None}
+    _create(catalog, "gauges", layer_columns([attr]), ["location_key"], {"teehr.type": "layer"})
+    point = bytes.fromhex("0101000000000000000000f03f000000000000f03f")
+    catalog.load_table(("p", "gauges")).append(pa.table({
+        "location_key": ["b", "a", "c"],
+        "name": [None, None, None],
+        "geometry": [point] * 3,
+        **{c: pa.array([1.0] * 3) for c in ("bbox_xmin", "bbox_ymin", "bbox_xmax", "bbox_ymax")},
+        "is_active": [True, True, False],
+    }, schema=catalog.load_table(("p", "gauges")).schema().as_arrow()))  # fmt: skip
+    assert wh.location_keys(catalog, "p", "flow") == ["a", "b", "c"]
+    assert wh.location_keys(catalog, "p", "flow", "is_active == True") == ["a", "b"]
+    with pytest.raises(wh.DataMismatch, match="no location layer"):
+        wh.location_keys(catalog, "p", "flow_series")
+
+
+def test_combine_joins_small_batches():
+    batches = [rows(("a", 0, 1.0)), rows(), rows(("b", 0, 2.0), ("c", 0, 3.0)), rows(("d", 0, 4.0))]
+    assert [t.num_rows for t in wh.combine(batches, rows=2)] == [3, 1]
+    assert list(wh.combine([rows()])) == []

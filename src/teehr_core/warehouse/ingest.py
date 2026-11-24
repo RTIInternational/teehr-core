@@ -18,7 +18,7 @@ its new series are added to the series table, and it is upserted in one commit.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -86,6 +86,44 @@ def check(data: pa.Table, table: Table) -> pa.Table:
     if problems:
         raise DataMismatch("; ".join(problems))
     return typed
+
+
+def location_keys(
+    catalog: Catalog, namespace: str, name: str, where: str | None = None
+) -> list[str]:
+    """Return the location keys of timeseries dataset ``name``'s location layer, sorted.
+
+    The locations an ingest fetches for. ``where`` filters on the layer's attributes, as a
+    PyIceberg row filter (e.g. ``"is_active == True"``).
+    """
+    props = catalog.load_table((namespace, name)).properties
+    layer = props.get("teehr.location_layer")
+    if not layer:
+        raise DataMismatch(f"{namespace}.{name} has no location layer (teehr.location_layer)")
+    scan = catalog.load_table((namespace, layer)).scan(
+        row_filter=where or "True", selected_fields=("location_key",)
+    )
+    return sorted(scan.to_arrow()["location_key"].to_pylist())
+
+
+def combine(batches: Iterable[pa.Table], rows: int = 1_000_000) -> Iterator[pa.Table]:
+    """Yield ``batches`` joined into tables of at least ``rows`` rows (the last may be fewer).
+
+    Fewer, larger commits than one per fetched batch: a source's batches are often small
+    (e.g. a request's worth of sites), and each write is a commit and its files.
+    """
+    held: list[pa.Table] = []
+    count = 0
+    for batch in batches:
+        if not batch.num_rows:
+            continue
+        held.append(batch)
+        count += batch.num_rows
+        if count >= rows:
+            yield pa.concat_tables(held, promote_options="default")
+            held, count = [], 0
+    if held:
+        yield pa.concat_tables(held, promote_options="default")
 
 
 def _months(data: pa.Table) -> set[str]:
