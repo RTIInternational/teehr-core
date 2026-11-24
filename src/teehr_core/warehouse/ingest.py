@@ -18,12 +18,18 @@ its new series are added to the series table, and it is upserted in one commit.
 
 from __future__ import annotations
 
+import os
+import uuid
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pyarrow as pa
 import pyarrow.compute as pc
+import pyarrow.parquet as pq
+from pyarrow import fs
+from pyiceberg.expressions import And, BooleanExpression, GreaterThanOrEqual, LessThan, Or
 from pyiceberg.table import Table
 
 from teehr_core.model.units import UnitRegistry, conversion_between
@@ -126,6 +132,87 @@ def combine(batches: Iterable[pa.Table], rows: int = 1_000_000) -> Iterator[pa.T
         yield pa.concat_tables(held, promote_options="default")
 
 
+def _time_column(data: pa.Table) -> str:
+    """Return the column a dataset is partitioned on: issue time for forecasts, else value time."""
+    return "reference_time" if "reference_time" in data.column_names else "value_time"
+
+
+def _month_bounds(month: str) -> tuple[datetime, datetime]:
+    year, mon = (int(p) for p in month.split("-"))
+    start = datetime(year, mon, 1, tzinfo=UTC)
+    return start, datetime(year + mon // 12, mon % 12 + 1, 1, tzinfo=UTC)
+
+
+def _month_filter(data: pa.Table) -> BooleanExpression:
+    """Every row in the UTC months ``data``'s time column falls in."""
+    column = _time_column(data)
+    stamps = pc.strftime(data[column], format="%Y-%m", locale="C")
+    clauses: list[BooleanExpression] = []
+    for month in sorted(m for m in pc.unique(stamps).to_pylist() if m):
+        start, end = _month_bounds(month)
+        clauses.append(And(GreaterThanOrEqual(term=column, value=start.isoformat()),
+                           LessThan(term=column, value=end.isoformat())))  # fmt: skip
+    out = clauses[0]
+    for clause in clauses[1:]:
+        out = Or(out, clause)
+    return out
+
+
+def _current_snapshot(table: Table) -> int | None:
+    table.refresh()
+    snapshot = table.current_snapshot()
+    return snapshot.snapshot_id if snapshot else None
+
+
+def stage_by_month(batches: Iterable[pa.Table], directory: str) -> int:
+    """Write ``batches`` under ``directory`` as Parquet, one folder per UTC month; return rows.
+
+    The first step of a backfill: a source's batches are by site, or series, across their
+    whole record, while :func:`staged_months` gives them back a month at a time for
+    ``write_timeseries(..., replace_months=True)``. ``directory`` is a local path or a URI
+    PyArrow can open (e.g. ``s3://bucket/prefix``).
+    """
+    filesystem, root = fs.FileSystem.from_uri(_uri(directory))
+    rows = 0
+    for batch in batches:
+        if not batch.num_rows:
+            continue
+        stamps = pc.strftime(batch[_time_column(batch)], format="%Y-%m", locale="C")
+        for month in pc.unique(stamps).to_pylist():
+            part = batch.filter(pc.equal(stamps, month))
+            folder = f"{root}/month={month}"
+            filesystem.create_dir(folder, recursive=True)
+            pq.write_table(part, f"{folder}/{uuid.uuid4().hex}.parquet", filesystem=filesystem)
+        rows += batch.num_rows
+    return rows
+
+
+def staged_months(directory: str, months: Iterable[str] | None = None) -> Iterator[pa.Table]:
+    """Yield what :func:`stage_by_month` wrote, one month (all its rows) at a time, in order.
+
+    ``months`` (``YYYY-MM``) limits it to those.
+    """
+    filesystem, root = fs.FileSystem.from_uri(_uri(directory))
+    found = filesystem.get_file_info(fs.FileSelector(root, allow_not_found=True))
+    staged = sorted(
+        i.base_name.split("=", 1)[1] for i in found
+        if i.type == fs.FileType.Directory and i.base_name.startswith("month=")
+    )  # fmt: skip
+    wanted = set(months) if months is not None else None
+    for month in staged:
+        if wanted is not None and month not in wanted:
+            continue
+        parts = filesystem.get_file_info(fs.FileSelector(f"{root}/month={month}"))
+        tables = [pq.read_table(p.path, filesystem=filesystem) for p in parts
+                  if p.base_name.endswith(".parquet")]  # fmt: skip
+        if tables:
+            yield pa.concat_tables(tables, promote_options="default")
+
+
+def _uri(directory: str) -> str:
+    return directory if "://" in directory else f"file://{os.path.abspath(directory)}"
+
+
 def _months(data: pa.Table) -> set[str]:
     stamps = pc.strftime(data["value_time"], format="%Y-%m", locale="C")
     return {m for m in pc.unique(stamps).to_pylist() if m}
@@ -142,6 +229,7 @@ def write_timeseries(
     units: UnitRegistry | None = None,
     location_of: Callable[[str], str | None] | None = None,
     properties: dict[str, str] | None = None,
+    replace_months: bool = False,
 ) -> Written:
     """Write ``rows`` (one table, or batches of them) into the timeseries dataset ``name``.
 
@@ -152,6 +240,12 @@ def write_timeseries(
     ``location_of(series_key)`` in the dataset's location layer (e.g. ``lambda key: key`` when
     series keys are location keys; default: unset). ``producer`` names who wrote it (a flow
     run, a notebook) in each commit, with ``properties``.
+
+    ``replace_months``: each batch holds whole UTC months (of ``reference_time`` for a forecast,
+    else ``value_time``), and replaces those months: rows of any series not in the batch are
+    deleted from them. For backfills and reloads of every series at once (:func:`staged_months`
+    gives such batches): it drops whole partitions instead of rereading and rewriting stored
+    rows, which an upsert does and which grows with what is stored.
 
     Raises :class:`DataMismatch` for rows that don't fit (before anything of that batch is
     written; earlier batches stay written) and the catalog's own errors (e.g. no permission).
@@ -190,7 +284,12 @@ def write_timeseries(
             written.series_added += insert_missing(
                 series, conform(pa.table(new), columns_of(series)), commit
             )
-        written.snapshot_id = upsert(table, typed, commit)
+        if replace_months:
+            where = _month_filter(typed)
+            table.overwrite(typed, overwrite_filter=where, snapshot_properties=commit)
+            written.snapshot_id = _current_snapshot(table)
+        else:
+            written.snapshot_id = upsert(table, typed, commit)
         written.rows += typed.num_rows
         written.batches += 1
         months |= _months(typed)

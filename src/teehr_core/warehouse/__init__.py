@@ -22,6 +22,8 @@ from teehr_core.warehouse.ingest import (
     columns_of,
     combine,
     location_keys,
+    stage_by_month,
+    staged_months,
     write_timeseries,
 )
 from teehr_core.warehouse.layout import (
@@ -68,6 +70,8 @@ __all__ = [
     "merge",
     "partition_spec",
     "sort_order",
+    "stage_by_month",
+    "staged_months",
     "table_properties",
     "table_state",
     "upsert",
