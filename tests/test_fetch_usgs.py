@@ -171,3 +171,43 @@ def test_live_bulk_daily():
     rows = next(usgs.read_bulk(["01646500"], start, end, service="dv"))
     assert rows.num_rows == 10
     assert {t.hour for t in rows["value_time"].to_pylist()} == {0}
+
+
+def test_bulk_file_waits_out_rate_limits_with_the_key(monkeypatch):
+    import io
+    import urllib.error
+    import urllib.request
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    buf = io.BytesIO()
+    pq.write_table(pa.table({
+        "time_series_id": ["a"], "monitoring_location_id": ["USGS-01646500"],
+        "time": pa.array([pd.Timestamp("2026-11-20T00:00Z")]), "value": ["1.0"],
+        "approval_status": ["Approved"], "qualifier": pa.array([None], pa.list_(pa.string())),
+        "parameter_code": ["00060"],
+    }), buf)  # fmt: skip
+    seen, waits = [], []
+
+    class Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(request, timeout):
+        seen.append(request.get_header("X-api-key"))
+        if len(seen) < 3:
+            after = {"Retry-After": "7"} if len(seen) == 1 else {}
+            raise urllib.error.HTTPError(request.full_url, 429, "Too Many", after, None)
+        return Response(buf.getvalue())
+
+    monkeypatch.setenv("API_USGS_PAT", "k")
+    monkeypatch.setattr(urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(usgs.time, "sleep", waits.append)
+    frame = usgs._bulk_file("iv", "01646500")
+    assert len(frame) == 1
+    assert seen == ["k", "k", "k"]
+    assert waits == [7, 120]
