@@ -7,7 +7,7 @@ values are dropped and, for instantaneous values, only those on the hour are kep
 without those optional columns, drop them before writing.
 
 Set ``API_USGS_PAT`` (a key from https://api.waterdata.usgs.gov/signup/) for the API's higher
-rate limits; without it, small requests still work.
+rate limits, which the bulk files share; without it, small requests still work.
 
     from teehr_core.fetch import usgs
 
@@ -18,6 +18,8 @@ rate limits; without it, small requests still work.
 from __future__ import annotations
 
 import logging
+import os
+import time
 from collections.abc import Iterable, Iterator
 from datetime import datetime, timedelta
 from typing import Literal
@@ -38,6 +40,8 @@ NODATA = (-999999.0, -99999.0, -9999.0, -999.0)
 DAILY_MEAN = "00003"
 #: Sites per request.
 BATCH_SITES = 100
+#: Tries for a bulk file when rate limited (429), waiting between them: about an hour.
+RATE_LIMIT_TRIES = 8
 #: A site's whole record, all parameters, as Parquet (``service``: continuous or daily).
 BULK_URL = "https://api.waterdata.usgs.gov/stac-files/{service}/USGS-{site}/USGS-{site}.parquet"
 
@@ -189,19 +193,37 @@ def _bulk_file(service: Service, site: str) -> pd.DataFrame | None:
 
     url = BULK_URL.format(service="continuous" if service == "iv" else "daily",
                           site=site_number(site))  # fmt: skip
-    try:
-        with urllib.request.urlopen(url, timeout=300) as resp:
-            data = resp.read()
-    except urllib.error.HTTPError as err:
-        if err.code == 404:
-            return None
-        raise
+    headers = {"User-Agent": "teehr-core"}
+    if os.environ.get("API_USGS_PAT"):  # the files share the API's rate limits
+        headers["X-Api-Key"] = os.environ["API_USGS_PAT"]
+    for attempt in range(RATE_LIMIT_TRIES):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=headers),
+                                        timeout=300) as resp:  # fmt: skip
+                data = resp.read()
+            break
+        except urllib.error.HTTPError as err:
+            if err.code == 404:
+                return None
+            if err.code != 429 or attempt == RATE_LIMIT_TRIES - 1:
+                raise
+            wait = _retry_after(str(err.headers.get("Retry-After") or ""), attempt)
+            logger.warning("USGS bulk files: rate limited (%s); waiting %d s", site, wait)
+            time.sleep(wait)
     keep = [("parameter_code", "=", PARAMETER_CODE)]
     if service == "dv":
         keep.append(("statistic_id", "=", DAILY_MEAN))
     columns = ["time_series_id", "monitoring_location_id", "time", "value", "approval_status",
                "qualifier"]  # fmt: skip
     return pq.read_table(io.BytesIO(data), columns=columns, filters=keep).to_pandas()
+
+
+def _retry_after(header: str, attempt: int) -> int:
+    """Seconds to wait after a 429: the server's ``Retry-After``, else doubling to 15 min."""
+    try:
+        return max(1, int(header))
+    except ValueError:
+        return min(60 << attempt, 900)
 
 
 def read_bulk(
