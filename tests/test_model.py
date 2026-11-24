@@ -32,12 +32,13 @@ def test_timeseries_columns_and_key() -> None:
     assert [c["name"] for c in columns] == ["series_key", "value_time", "value"]
     assert key == ["series_key", "value_time"]
     columns, key = timeseries_columns(
-        ["quality", "member", "reference_time"],
+        ["qualifier", "member", "reference_time", "approval_status"],
         "absolute",
         [{"name": "flag", "type": "boolean", "required": False}],
     )
     assert [c["name"] for c in columns] == [
-        "series_key", "reference_time", "value_time", "member", "value", "quality",
+        "series_key", "reference_time", "value_time", "member", "value", "approval_status",
+        "qualifier",
         "period_start", "period_end", "flag",
     ]  # fmt: skip
     assert key == ["series_key", "reference_time", "value_time", "member"]
@@ -54,7 +55,9 @@ def test_arrow_schema() -> None:
 
 def test_every_type_has_an_arrow_type() -> None:
     declared = [
-        *timeseries_columns(["reference_time", "member", "quantile", "quality"], "absolute")[0],
+        *timeseries_columns(
+            ["reference_time", "member", "quantile", "approval_status", "qualifier"], "absolute"
+        )[0],
         *series_columns(),
         *layer_columns(),
         *crosswalk_columns(),

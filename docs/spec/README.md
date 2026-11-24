@@ -19,7 +19,7 @@ pair:
 fields:
   - {name: lead_time_bin, fn: lead_time_bins, width: PT6H}
   - {name: high_flow, expr: "primary_value > 1000"}
-filter: "primary_quality LIKE '%P%'"
+filter: "primary_approval_status = 'Provisional'"
 aggregate:
   - group_by: [primary_series_key, secondary_dataset, lead_time_bin]
     metrics: [count, rmse, nse, kge, {name: nse, transform: log}]

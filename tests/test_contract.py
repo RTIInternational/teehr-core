@@ -39,9 +39,9 @@ def test_normalizes_types_and_keeps_variable_and_unit_off_rows() -> None:
 
 def test_extra_columns_pass_through() -> None:
     out = normalize_timeseries(
-        ts(quality=pa.array(["A", "P"])), role="observed", variable="v", unit="m"
+        ts(qualifier=pa.array(["ICE", None])), role="observed", variable="v", unit="m"
     )
-    assert out["quality"].to_pylist() == ["A", "P"]
+    assert out["qualifier"].to_pylist() == ["ICE", None]
 
 
 def test_reports_all_problems_at_once() -> None:

@@ -63,7 +63,7 @@ def test_pairs_convert_units_and_keep_extras(hydro: Catalog, golden_dir: Path) -
     golden = json.loads((golden_dir / "hydro_metrics.json").read_text())
     assert pairs.num_rows == golden["pair_count"]
     assert set(pairs["unit"].to_pylist()) == {"[cft_i]/s"}
-    assert "primary_quality" in pairs.column_names
+    assert "primary_approval_status" in pairs.column_names
     assert pairs.schema.field("value_time").type == TIMESTAMP
 
 
