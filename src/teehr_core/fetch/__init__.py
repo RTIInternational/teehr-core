@@ -5,4 +5,5 @@ other key columns), in batches; it knows nothing of tables or catalogs. Writing 
 :func:`teehr_core.warehouse.ingest.write_timeseries`, from a scheduled flow or a person's notebook.
 
 - :mod:`.usgs`: USGS streamflow observations (the USGS Water Data API).
+- :mod:`.nwm`: NWM operational streamflow forecasts and analyses at reaches (NOAA's GCS bucket).
 """
