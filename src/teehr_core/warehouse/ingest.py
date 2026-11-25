@@ -144,18 +144,30 @@ def _month_bounds(month: str) -> tuple[datetime, datetime]:
 
 
 def _month_filter(data: pa.Table) -> BooleanExpression:
-    """Every row in the UTC months ``data``'s time column falls in."""
+    """Every row in the UTC months ``data``'s time column falls in.
+
+    Consecutive months are one range, and the ranges are joined as a balanced tree: a
+    chain of an ``Or`` per month overflows PyIceberg's recursive visitors (a backfill's
+    commit can span centuries).
+    """
     column = _time_column(data)
     stamps = pc.strftime(data[column], format="%Y-%m", locale="C")
-    clauses: list[BooleanExpression] = []
+    ranges: list[tuple[datetime, datetime]] = []
     for month in sorted(m for m in pc.unique(stamps).to_pylist() if m):
         start, end = _month_bounds(month)
-        clauses.append(And(GreaterThanOrEqual(term=column, value=start.isoformat()),
-                           LessThan(term=column, value=end.isoformat())))  # fmt: skip
-    out = clauses[0]
-    for clause in clauses[1:]:
-        out = Or(out, clause)
-    return out
+        if ranges and ranges[-1][1] == start:
+            ranges[-1] = (ranges[-1][0], end)
+        else:
+            ranges.append((start, end))
+    clauses: list[BooleanExpression] = [
+        And(GreaterThanOrEqual(term=column, value=start.isoformat()),
+            LessThan(term=column, value=end.isoformat()))
+        for start, end in ranges
+    ]  # fmt: skip
+    while len(clauses) > 1:
+        pairs = [Or(a, b) for a, b in zip(clauses[::2], clauses[1::2], strict=False)]
+        clauses = pairs + clauses[len(pairs) * 2 :]
+    return clauses[0]
 
 
 def _current_snapshot(table: Table) -> int | None:

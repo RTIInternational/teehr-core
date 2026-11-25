@@ -176,3 +176,18 @@ def test_replace_months_replaces_whole_months(catalog):
     assert written.months == ["2026-01"]
     # January is only the new row (b's is gone); February is untouched.
     assert [(r["series_key"], r["value"]) for r in stored(catalog)] == [("a", 5.0), ("a", 9.0)]
+
+
+def test_replace_months_over_centuries(catalog):
+    """A commit of a long record: months far apart (so not one range) stay shallow."""
+    months = [datetime(1900 + i // 6, 2 * (i % 6) + 1, 15, tzinfo=UTC) for i in range(1000)]
+    many = pa.table({
+        "series_key": ["a"] * len(months),
+        "value_time": pa.array(months, pa.timestamp("us", "UTC")),
+        "value": pa.array([1.0] * len(months), pa.float64()),
+    })  # fmt: skip
+    write_timeseries(catalog, "p", "flow", many, producer="test")
+    written = write_timeseries(catalog, "p", "flow", many, producer="test",
+                               replace_months=True)  # fmt: skip
+    assert len(written.months) == 1000
+    assert len(stored(catalog)) == 1000
