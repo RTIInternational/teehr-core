@@ -281,6 +281,11 @@ def write_timeseries(
     for batch in [rows] if isinstance(rows, pa.Table) else rows:
         if not batch.num_rows:
             continue
+        if written.batches:
+            # Again for each commit: the storage credentials a catalog vends with a table
+            # expire (Polaris: an hour), and a long write outlives them.
+            table = catalog.load_table((namespace, name))
+            series = catalog.load_table((namespace, series_name)) if series_name else None
         typed = check(batch, table)
         if conversion is not None:
             i = typed.schema.get_field_index("value")

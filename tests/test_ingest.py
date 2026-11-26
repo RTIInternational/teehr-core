@@ -79,6 +79,30 @@ def test_writes_batches_and_adds_their_series(catalog):
     assert table.current_snapshot().summary[wh.PRODUCER] == "test"
 
 
+def test_each_commit_loads_the_tables_again(catalog, monkeypatch):
+    """A catalog's vended storage credentials expire (Polaris: an hour) during long writes."""
+    loaded = []
+    load = catalog.load_table
+
+    def tracked(identifier):
+        loaded.append(load(identifier))
+        return loaded[-1]
+
+    class Expired:
+        def __getattr__(self, name):
+            raise OSError("expired credentials")
+
+    def batches():
+        yield rows(("a", 0, 1.0))
+        for table in loaded:
+            table.io = Expired()
+        yield rows(("b", 24, 2.0))
+
+    monkeypatch.setattr(catalog, "load_table", tracked)
+    written = write_timeseries(catalog, "p", "flow", batches(), producer="test")
+    assert (written.batches, written.series_added) == (2, 2)
+
+
 def test_writing_again_replaces_and_adds_nothing(catalog):
     write_timeseries(catalog, "p", "flow", rows(("a", 0, 1.0)), producer="test")
     again = write_timeseries(catalog, "p", "flow", rows(("a", 0, 5.0)), producer="test")
