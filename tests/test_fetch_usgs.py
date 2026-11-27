@@ -56,24 +56,26 @@ NOW = "2026-11-27T09:00Z"
 
 
 def choose(monkeypatch, *rows, pins=None):
+    """The sites' series ids, best first."""
     monkeypatch.setattr(usgs, "_series_metadata", lambda sites, service: meta(*rows))
-    return usgs.choose_series(["x"], pins=pins)
+    return {site: [s.id for s in ranked]
+            for site, ranked in usgs.choose_series(["x"], pins=pins).items()}  # fmt: skip
 
 
 def test_the_primary_series_over_a_secondary_sensor(monkeypatch):
-    # The secondary's last value is later, and it has more (5-minute) values: still not kept.
+    # The secondary's last value is later, and it has more (5-minute) values: still second.
     assert choose(monkeypatch,
         ("08155300", "primary", "Primary", None, "Primary Sensor", "2007-10-01", "2026-11-27T06Z"),
         ("08155300", "secondary", None, None, "Secondary Sensor 5-Min Update", "2026-07-27", NOW),
-    ) == {"USGS-08155300": "primary"}  # fmt: skip
+    ) == {"USGS-08155300": ["primary", "secondary"]}  # fmt: skip
 
 
-def test_a_series_still_reporting_over_an_old_one(monkeypatch):
-    # Both primary; the old one has no sublocation and a longer record, but ended in 2008.
+def test_series_still_reporting_over_an_old_one(monkeypatch):
+    # The old one has no sublocation and a longer record, but ended in 2008.
     assert choose(monkeypatch,
         ("07358280", "old", "Primary", None, None, "1970-10-06", "2008-10-01"),
         ("07358280", "outflow", "Primary", "OUTFLOW", None, "2007-10-01", NOW),
-    ) == {"USGS-07358280": "outflow"}  # fmt: skip
+    ) == {"USGS-07358280": ["outflow", "old"]}  # fmt: skip
 
 
 def test_the_whole_site_over_its_meters(monkeypatch):
@@ -81,7 +83,7 @@ def test_the_whole_site_over_its_meters(monkeypatch):
         ("08188590", "right", "Primary", "Right Vel Meter", None, "2016-05-05", NOW),
         ("08188590", "whole", "Primary", None, None, "2016-05-05", NOW),
         ("08188590", "left", "Primary", "Left Vel Meter", None, "2016-05-05", NOW),
-    ) == {"USGS-08188590": "whole"}  # fmt: skip
+    )["USGS-08188590"][0] == "whole"  # fmt: skip
 
 
 def test_the_total_over_its_parts(monkeypatch):
@@ -89,35 +91,44 @@ def test_the_total_over_its_parts(monkeypatch):
         ("08072500", "c2", "Primary", None, "Conduit 2", "2026-08-06", NOW),
         ("08072500", "total", "Primary", None, "Total Outflow", "2026-08-06", NOW),
         ("08072500", "c1", "Primary", None, "Conduit 1", "2026-08-24", NOW),
-    ) == {"USGS-08072500": "total"}  # fmt: skip
+    )["USGS-08072500"][0] == "total"  # fmt: skip
 
 
 def test_otherwise_the_longest_record_with_a_warning(monkeypatch, caplog):
     assert choose(monkeypatch,
         ("04191500", "tailwater", "Primary", None, "Dam tailwater", "1990-10-01", NOW),
         ("04191500", "harding", "Primary", None, "at Harding Rd", "2016-10-01", NOW),
-    ) == {"USGS-04191500": "tailwater"}  # fmt: skip
+    ) == {"USGS-04191500": ["tailwater", "harding"]}  # fmt: skip
     assert "record length only" in caplog.text and "USGS-04191500" in caplog.text
 
 
-def test_missing_times_still_choose_one(monkeypatch):
-    rows = meta(("405327084555401", "b", "Primary", None, None, None, None),
-                ("405327084555401", "a", "Primary", None, None, None, None))  # fmt: skip
-    monkeypatch.setattr(usgs, "_series_metadata", lambda sites, service: rows)
-    assert usgs.choose_series(["x"]) == {"USGS-405327084555401": "a"}
+def test_a_replacement_is_not_a_tie(monkeypatch, caplog):
+    choose(monkeypatch,
+        ("09522720", "old", "Primary", None, None, "2006-10-01", "2009-10-01"),
+        ("09522720", "current", "Primary", None, None, "2007-10-19", NOW))  # fmt: skip
+    assert "record length only" not in caplog.text
 
 
-def test_a_pin_wins(monkeypatch, caplog):
+def test_missing_times_still_rank(monkeypatch):
+    assert choose(monkeypatch,
+        ("405327084555401", "b", "Primary", None, None, None, None),
+        ("405327084555401", "a", "Primary", None, None, None, None),
+    ) == {"USGS-405327084555401": ["a", "b"]}  # fmt: skip
+
+
+def test_a_pin_first(monkeypatch, caplog):
     rows = [("02237700", "structure", "Primary", None, "Structure Discharge", "2005-10-01", NOW),
             ("02237700", "nurf", "Primary", None, "NURF Discharge", "2009-06-01", NOW)]  # fmt: skip
-    assert choose(monkeypatch, *rows, pins={"usgs-02237700": "nurf"}) == {"USGS-02237700": "nurf"}
+    assert choose(monkeypatch, *rows, pins={"usgs-02237700": "nurf"}) == {
+        "USGS-02237700": ["nurf", "structure"]}  # fmt: skip
     assert "record length only" not in caplog.text
 
 
 def test_a_pin_to_a_series_that_stopped_is_warned_about(monkeypatch, caplog):
     rows = [("09522720", "old", "Primary", None, None, "2006-10-01", "2009-10-01"),
             ("09522720", "current", "Primary", None, None, "2007-10-19", NOW)]  # fmt: skip
-    assert choose(monkeypatch, *rows, pins={"09522720": "old"}) == {"USGS-09522720": "current"}
+    assert choose(monkeypatch, *rows, pins={"09522720": "old"}) == {
+        "USGS-09522720": ["old", "current"]}  # fmt: skip
     assert "stopped reporting" in caplog.text
 
 
@@ -127,12 +138,43 @@ def test_a_pin_the_site_does_not_have_is_warned_about(monkeypatch, caplog):
     assert "isn't one of its series" in caplog.text
 
 
+def series(*items):
+    """A ranking: (id, begin, end) best first; None: open."""
+    t = lambda v: None if v is None else pd.Timestamp(v).to_pydatetime()  # noqa: E731
+    return [usgs.Series(i, t(b), t(e)) for i, b, e in items]
+
+
+def test_each_time_keeps_the_best_series_covering_it():
+    # The old series fills the years before its replacement began, and only those.
+    rows = usgs.to_rows(frame(
+        ("09522720", "2007-01-01T00:00Z", 1.0, "old"),
+        ("09522720", "2008-01-01T00:00Z", 2.0, "old"),
+        ("09522720", "2008-01-01T00:00Z", 8.0, "current"),
+        ("09522720", "2026-11-20T00:00Z", 9.0, "current"),
+    ), series={"USGS-09522720": series(("current", "2007-10-19", None),
+                                       ("old", "2006-10-01", "2009-10-01"))})  # fmt: skip
+    assert [(t[1][:4], round(t[2] / usgs.CFS_TO_M3S)) for t in as_tuples(rows)] == [
+        ("2007", 1), ("2008", 8), ("2026", 9)]  # fmt: skip
+
+
+def test_series_reporting_at_once_never_mix():
+    # OUTFLOW (best) has a gap at 01:00: it stays a gap, INFLOW doesn't fill it.
+    rows = usgs.to_rows(frame(
+        ("07358280", "2026-11-20T00:00Z", 1.0, "outflow"),
+        ("07358280", "2026-11-20T00:00Z", 5.0, "inflow"),
+        ("07358280", "2026-11-20T01:00Z", 6.0, "inflow"),
+    ), series={"USGS-07358280": series(("outflow", "2007-10-01", None),
+                                       ("inflow", "2007-10-01", None))})  # fmt: skip
+    assert [round(t[2] / usgs.CFS_TO_M3S) for t in as_tuples(rows)] == [1]
+
+
 def test_rows_keep_the_chosen_series():
     rows = usgs.to_rows(frame(
         ("08155300", "2026-11-20T00:00Z", 1.0, "primary"),
         ("08155300", "2026-11-20T00:00Z", 9.0, "secondary"),  # later, and more values ...
         ("08155300", "2026-11-20T01:00Z", 9.0, "secondary"),
-    ), series={"USGS-08155300": "primary"})  # fmt: skip
+    ), series={"USGS-08155300": series(("primary", "2007-10-01", None),
+                                       ("secondary", "2026-07-27", None))})  # fmt: skip
     assert [r[2] for r in as_tuples(rows)] == [round(1.0 * usgs.CFS_TO_M3S, 4)]
 
 

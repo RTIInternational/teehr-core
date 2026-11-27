@@ -24,9 +24,9 @@ from __future__ import annotations
 import logging
 import os
 import time
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import pandas as pd
 import pyarrow as pa
@@ -136,150 +136,203 @@ def _series_metadata(sites: list[str] | None, service: Service) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
+class Series(NamedTuple):
+    """One of a site's time series: its id and the span of its values (None: open)."""
+
+    id: str
+    begin: datetime | None
+    end: datetime | None
+
+    def covers(self, times: pd.Series) -> pd.Series:
+        """Return which of ``times`` are in the series' span."""
+        inside = pd.Series(True, index=times.index)
+        if self.begin is not None:
+            inside &= times >= _utc(self.begin)
+        if self.end is not None:
+            inside &= times <= _utc(self.end)
+        return inside
+
+
+def _utc(when: datetime) -> pd.Timestamp:
+    """``when`` as a UTC timestamp (naive: taken as UTC)."""
+    stamp = pd.Timestamp(when)
+    return stamp.tz_localize("UTC") if stamp.tz is None else stamp.tz_convert("UTC")
+
+
 def choose_series(
     sites: Iterable[str] | None = None,
     *,
     pins: Mapping[str, str] | None = None,
     service: Service = "iv",
-) -> dict[str, str]:
-    """Choose the discharge time series to keep at each site that has several.
+) -> dict[str, list[Series]]:
+    """Rank the discharge time series of each site that has several, best first.
 
-    A site can have several at once: a structure's and a river's, a primary and a secondary
-    sensor, an old series and its replacement. In order, the one kept is:
+    A site can have several: a structure's and a river's, a primary and a secondary sensor,
+    an old series and its replacement. At each time, the best-ranked series whose span
+    covers it is kept (:func:`to_rows`), so a replaced series fills the years before its
+    successor began, and series reporting at the same time never mix. Ranked by, in order:
 
-    1. the pinned one (``pins``), if the site has it and it still reports (a pin to a
-       series that stopped is warned about, and the rules decide);
-    2. the one the USGS marks primary;
-    3. one still reporting (its last value within :data:`REPORTING` of the site's latest);
-    4. one without a sublocation (e.g. not one of a site's velocity meters);
-    5. one whose description says it's the whole flow (:data:`WHOLE_FLOW`: "Total ...",
+    1. a pin (``pins``; a pin to a series that stopped reporting is warned about: it only
+       covers the times it has);
+    2. the USGS's primary flag (non-primary series are provisional, kept 120 days);
+    3. still reporting (its last value within :data:`REPORTING` of the site's latest; its
+       span is then open-ended);
+    4. no sublocation (e.g. not one of a site's velocity meters);
+    5. a description saying it's the whole flow (:data:`WHOLE_FLOW`: "Total ...",
        "Combined");
-    6. the longest record.
+    6. the longest record, then the id.
 
-    A site still decided only by its record's length is logged as a warning: pin it to be
-    sure.
+    Sites where two series reporting at the same time are ranked by record length only are
+    logged as a warning: pin them to be sure.
 
     Parameters
     ----------
     sites : Iterable[str], optional
         ``usgs-01646500``, ``USGS-01646500`` or ``01646500``; every site, by default (two
-        requests for the whole country).
+        requests for the whole country, about 5 s).
     pins : Mapping[str, str], optional
-        A site's time series id (any form of site), kept over the rules.
+        A site's time series id (any form of site), ranked over the rules.
     service : {"iv", "dv"}, default "iv"
         Instantaneous values' series, or daily means'.
 
     Returns
     -------
-    dict[str, str]
-        ``USGS-<site number>`` to the time series id to keep, for the sites with several
-        series (or a pin): pass it as ``series`` to :func:`fetch_streamflow`,
-        :func:`read_bulk` or :func:`to_rows`.
+    dict[str, list[Series]]
+        ``USGS-<site number>`` to its series, best first, for the sites with several (or a
+        pin): pass it as ``series`` to :func:`fetch_streamflow`, :func:`read_bulk` or
+        :func:`to_rows`.
 
     Examples
     --------
-    >>> choose_series(["02430626"])  # a primary series and a newer secondary one
-    {'USGS-02430626': 'f86922c5...'}
-    >>> choose_series(["02237700"], pins={"usgs-02237700": "f5dc2874291f4b49813a55d8c6dceef5"})
-    {'USGS-02237700': 'f5dc2874291f4b49813a55d8c6dceef5'}
+    A primary series and a newer secondary sensor:
+
+    >>> [s.id for s in choose_series(["02430626"])["USGS-02430626"]]
+    ['f86922c5...', 'c69d656b...']
+
+    A pin first:
+
+    >>> choose_series(["02237700"], pins={"usgs-02237700": "8ed60838..."})["USGS-02237700"][0].id
+    '8ed60838...'
     """
     pinned = {f"USGS-{site_number(s)}": ts for s, ts in (pins or {}).items()}
     meta = _series_metadata(None if sites is None else list(sites), service)
-    chosen: dict[str, str] = {}
+    ranked: dict[str, list[Series]] = {}
     by_length: list[str] = []
     if not meta.empty:
         for site, rows in meta.groupby("monitoring_location_id", sort=True):
-            pin = rows[rows["time_series_id"] == pinned.get(site)]
-            if not pin.empty:
-                end = pd.to_datetime(rows["end_utc"], utc=True)
-                last = pd.to_datetime(pin["end_utc"], utc=True).iloc[0]
-                if last >= end.max() - REPORTING:
-                    chosen[site] = pinned[site]
-                    continue
-                logger.warning("%s: pinned time series %s stopped reporting (last %s); "
-                               "update the pin. Choosing by the rules.", site, pinned[site],
-                               last)  # fmt: skip
-                pinned.pop(site)
-            if len(rows) < 2:
+            pin = pinned.pop(str(site), None)
+            if pin is not None and pin not in set(rows["time_series_id"]):
+                logger.warning("%s: pinned time series %s isn't one of its series; ignored",
+                               site, pin)  # fmt: skip
+                pin = None
+            if len(rows) < 2 and pin is None:
                 continue
-            kept, decided = _rank(rows)
-            chosen[site] = kept
-            if not decided:
-                by_length.append(site)
-    for site, ts in pinned.items():
-        if site not in chosen:
-            logger.warning("%s: pinned time series %s isn't one of its series; ignored", site, ts)
+            order, tied = _rank(rows, pin)
+            ranked[str(site)] = order
+            if tied:
+                by_length.append(str(site))
+    for site, pin in pinned.items():
+        logger.warning("%s: pinned time series %s isn't one of its series; ignored", site, pin)
     if by_length:
-        logger.warning("sites with several discharge time series chosen by record length "
-                       "only (pin to be sure): %s", ", ".join(by_length))  # fmt: skip
-    return chosen
+        logger.warning("sites with several discharge time series reporting at once, ranked by "
+                       "record length only (pin to be sure): %s", ", ".join(by_length))  # fmt: skip
+    return ranked
 
 
-def _rank(rows: pd.DataFrame) -> tuple[str, bool]:
-    """Return a site's series to keep, and whether a rule before record length decided it."""
-    end = pd.to_datetime(rows["end_utc"], utc=True)
+def _rank(rows: pd.DataFrame, pin: str | None) -> tuple[list[Series], bool]:
+    """Return a site's series best first, and whether the top two tie on every rule."""
     begin = pd.to_datetime(rows["begin_utc"], utc=True)
-    text = rows["web_description"].fillna("").str.lower()
-    rules = [
-        rows["primary"].fillna("").eq("Primary"),
-        end >= end.max() - REPORTING,
-        rows["sublocation_identifier"].isna() | rows["sublocation_identifier"].eq(""),
-        text.apply(lambda t: any(w in t for w in WHOLE_FLOW)),
-    ]
-    left = pd.Series(True, index=rows.index)
-    for rule in rules:
-        if (left & rule).sum() >= 1:
-            left &= rule
-    # The longest record (a missing begin or end counts as none), then the id: always the same.
-    ranked = pd.DataFrame({"length": (end - begin).fillna(pd.Timedelta(0)),
-                           "id": rows["time_series_id"].astype(str)})[left]  # fmt: skip
-    ranked = ranked.sort_values(["length", "id"], ascending=[False, True])
-    return str(ranked["id"].iloc[0]), int(left.sum()) == 1
+    end = pd.to_datetime(rows["end_utc"], utc=True)
+    reporting = end >= end.max() - REPORTING
+    ids = rows["time_series_id"].astype(str)
+    text = rows["web_description"].fillna("").astype(str).str.lower()
+    sub = rows["sublocation_identifier"].fillna("").astype(str)
+    if pin is not None and not reporting[ids == pin].any():
+        logger.warning("%s: pinned time series %s stopped reporting (last %s); update the pin",
+                       rows["monitoring_location_id"].iloc[0], pin,
+                       end[ids == pin].iloc[0])  # fmt: skip
+    keys = pd.DataFrame({
+        "pin": ids.ne(pin) if pin is not None else False,
+        "primary": rows["primary"].fillna("").ne("Primary"),
+        "reporting": ~reporting,
+        "sublocation": sub.ne(""),
+        "whole": ~text.apply(lambda t: any(w in t for w in WHOLE_FLOW)),
+        "length": -(end - begin).fillna(pd.Timedelta(0)).dt.total_seconds(),
+        "id": ids,
+    })  # fmt: skip
+    order = keys.sort_values(list(keys.columns)).index
+    series = [Series(ids[i], None if pd.isna(begin[i]) else begin[i].to_pydatetime(),
+                     None if reporting[i] or pd.isna(end[i]) else end[i].to_pydatetime())
+              for i in order]  # fmt: skip
+    rules = ["pin", "primary", "reporting", "sublocation", "whole"]
+    first, second = (order[0], order[1]) if len(order) > 1 else (order[0], None)
+    tied = (
+        second is not None
+        and bool(reporting[first])
+        and bool(reporting[second])
+        and (keys.loc[first, rules].tolist() == keys.loc[second, rules].tolist())
+    )
+    return series, tied
 
 
-def _one_series_per_site(frame: pd.DataFrame, series: Mapping[str, str] | None) -> pd.DataFrame:
-    """Keep one time series per site: ``series``' choice, else the latest, then the longest.
+def _one_series_per_site(
+    frame: pd.DataFrame, series: Mapping[str, Sequence[Series]] | None
+) -> pd.DataFrame:
+    """Keep one time series per site at each time: ``series``' ranking, else the latest.
 
-    A site with several would repeat its times. Without a choice for it (or when the chosen
-    series isn't in ``frame``), the series with the latest value is kept, then the one with
-    most values, with a warning.
+    At a site with a ranking, each time is the best-ranked series' whose span covers it
+    (none: the best-ranked one with a value there). A site with several series and no
+    ranking keeps the series with the latest value, then the one with most values, with a
+    warning.
     """
     if "time_series_id" not in frame or frame.empty:
         return frame
     stats = frame.groupby(["monitoring_location_id", "time_series_id"])["time"].agg(["max", "size"])
     several = stats.groupby(level=0).size()
-    several = several[several > 1]
-    if several.empty:
+    several = set(several[several > 1].index)
+    if not several:
         return frame
-    present = set(stats.index)
-    kept = [(site, series[site]) for site in several.index
-            if series and site in series and (site, series[site]) in present]  # fmt: skip
-    decided = {site for site, _ in kept}
-    rest = stats[~stats.index.get_level_values(0).isin(decided)]
-    rest = rest[rest.index.get_level_values(0).isin(several.index)]
-    if not rest.empty:
-        ranked = rest.sort_values(["max", "size"], ascending=False)
-        kept += list(ranked.groupby(level=0).head(1).index)
-        logger.warning("sites with more than one discharge time series and no choice for them "
-                       "(kept the latest): %s",
-                       ", ".join(sorted(set(rest.index.get_level_values(0)))))  # fmt: skip
-    index = frame.set_index(["monitoring_location_id", "time_series_id"]).index
-    single = ~frame["monitoring_location_id"].isin(several.index).to_numpy()
-    return frame[single | index.isin(kept)]
+    keep = pd.Series(~frame["monitoring_location_id"].isin(several), index=frame.index)
+    times = pd.to_datetime(frame["time"], utc=True)
+    unranked = []
+    for site in sorted(several):
+        at = frame["monitoring_location_id"] == site
+        order = list(series.get(site, ())) if series else []
+        if not order:
+            unranked.append(site)
+            continue
+        site_times, ids = times[at], frame.loc[at, "time_series_id"].astype(str)
+        owner = pd.Series(None, index=site_times.index, dtype=object)
+        for s in order:
+            owner[owner.isna() & s.covers(site_times)] = s.id
+        rank = {s.id: i for i, s in enumerate(order)}
+        priority = ids.map(rank).fillna(len(order))
+        free = owner.isna()  # no span covers the time: the best-ranked value there
+        best = priority[free].groupby(site_times[free]).transform("min")
+        keep[at] = (ids == owner) | (free & (priority == best.reindex(ids.index)))
+    if unranked:
+        rest = stats.loc[unranked].sort_values(["max", "size"], ascending=False)
+        kept = set(rest.groupby(level=0).head(1).index)
+        index = frame.set_index(["monitoring_location_id", "time_series_id"]).index
+        keep |= pd.Series(index.isin(kept), index=frame.index)
+        logger.warning("sites with more than one discharge time series and no ranking for "
+                       "them (kept the latest): %s", ", ".join(unranked))  # fmt: skip
+    return frame[keep.to_numpy()]
 
 
 def to_rows(
     frame: pd.DataFrame,
     service: Service = "iv",
     hourly: bool = True,
-    series: Mapping[str, str] | None = None,
+    series: Mapping[str, Sequence[Series]] | None = None,
 ) -> pa.Table:
     """Return the API's rows as v1 timeseries rows (:data:`SCHEMA`, m3/s).
 
     The API's rows are ``monitoring_location_id``, ``time``, ``value`` in ft3/s,
     ``approval_status`` and ``qualifier``. No-data
     values are dropped and, for instantaneous values with ``hourly``, those not on the hour.
-    At a site with several time series, ``series``' choice (:func:`choose_series`) is kept.
+    At a site with several time series, each time keeps ``series``' choice
+    (:func:`choose_series`).
     """
     if frame is None or frame.empty:
         return SCHEMA.empty_table()
@@ -317,7 +370,7 @@ def fetch_streamflow(
     service: Service = "iv",
     hourly: bool = True,
     batch_sites: int = BATCH_SITES,
-    series: Mapping[str, str] | None = None,
+    series: Mapping[str, Sequence[Series]] | None = None,
 ) -> Iterator[pa.Table]:
     """Yield the sites' streamflow from ``start`` up to (not including) ``end``, UTC.
 
@@ -325,8 +378,8 @@ def fetch_streamflow(
 
     ``service``: ``iv`` instantaneous values (default; on the hour with ``hourly``), ``dv``
     daily means (at midnight UTC of their day). A batch the API has nothing for is empty.
-    ``series``: the time series to keep at sites with several (:func:`choose_series`, which
-    is asked for each batch's sites when it's None; pass it to choose once, or to pin).
+    ``series``: the ranking of sites' several time series (:func:`choose_series`, which is
+    asked for each batch's sites when it's None; pass it to ask once).
     """
     sites = list(dict.fromkeys(sites))  # unique, in order
     for i in range(0, len(sites), batch_sites):
@@ -388,7 +441,7 @@ def read_bulk(
     *,
     service: Service = "iv",
     hourly: bool = True,
-    series: Mapping[str, str] | None = None,
+    series: Mapping[str, Sequence[Series]] | None = None,
 ) -> Iterator[pa.Table]:
     """Yield each site's streamflow from its bulk file (:data:`BULK_URL`), one site at a time.
 
