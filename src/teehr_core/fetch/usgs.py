@@ -118,7 +118,7 @@ def _series_metadata(sites: list[str] | None, service: Service) -> pd.DataFrame:
 
     period, statistic = ("Points", None) if service == "iv" else ("Daily", DAILY_MEAN)
     fields = ["id", "monitoring_location_id", "primary", "sublocation_identifier",
-              "web_description", "begin_utc", "end_utc"]  # fmt: skip
+              "web_description", "begin_utc", "end_utc", "parent_time_series_id"]  # fmt: skip
     ids = [f"USGS-{site_number(s)}" for s in sites] if sites is not None else []
     groups: list[list[str] | None] = (
         [None]
@@ -191,7 +191,9 @@ def choose_series(
         ``usgs-01646500``, ``USGS-01646500`` or ``01646500``; every site, by default (two
         requests for the whole country, about 5 s).
     pins : Mapping[str, str], optional
-        A site's time series id (any form of site), ranked over the rules.
+        A site's time series id (any form of site), ranked over the rules. An instantaneous
+        series' id also pins the daily series computed from it (its
+        ``parent_time_series_id``), so one pin serves both services.
     service : {"iv", "dv"}, default "iv"
         Instantaneous values' series, or daily means'.
 
@@ -220,11 +222,7 @@ def choose_series(
     by_length: list[str] = []
     if not meta.empty:
         for site, rows in meta.groupby("monitoring_location_id", sort=True):
-            pin = pinned.pop(str(site), None)
-            if pin is not None and pin not in set(rows["time_series_id"]):
-                logger.warning("%s: pinned time series %s isn't one of its series; ignored",
-                               site, pin)  # fmt: skip
-                pin = None
+            pin = _pinned_series(rows, pinned.pop(str(site), None))
             if len(rows) < 2 and pin is None:
                 continue
             order, tied = _rank(rows, pin)
@@ -237,6 +235,29 @@ def choose_series(
         logger.warning("sites with several discharge time series reporting at once, ranked by "
                        "record length only (pin to be sure): %s", ", ".join(by_length))  # fmt: skip
     return ranked
+
+
+def _pinned_series(rows: pd.DataFrame, pin: str | None) -> str | None:
+    """Return the site's series ``pin`` names: itself, or the one it's the parent of.
+
+    A daily series' parent is the instantaneous series it's computed from, so one pin (an
+    instantaneous series' id) chooses both the instantaneous series and its daily means.
+    """
+    if pin is None:
+        return None
+    ids = rows["time_series_id"].astype(str)
+    if pin in set(ids):
+        return pin
+    if "parent_time_series_id" in rows:
+        parents = rows["parent_time_series_id"].astype(str)
+    else:
+        parents = pd.Series("", index=rows.index)
+    child = ids[parents.eq(pin)]
+    if not child.empty:
+        return str(child.iloc[0])
+    logger.warning("%s: pinned time series %s isn't one of its series (or their parent); "
+                   "ignored", rows["monitoring_location_id"].iloc[0], pin)  # fmt: skip
+    return None
 
 
 def _rank(rows: pd.DataFrame, pin: str | None) -> tuple[list[Series], bool]:

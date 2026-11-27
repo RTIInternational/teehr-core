@@ -132,6 +132,17 @@ def test_a_pin_to_a_series_that_stopped_is_warned_about(monkeypatch, caplog):
     assert "stopped reporting" in caplog.text
 
 
+def test_an_instantaneous_pin_chooses_its_daily_series(monkeypatch):
+    rows = meta(
+        ("07358280", "daily-in", "Primary", "INFLOW", None, "1988-11-22", NOW),
+        ("07358280", "daily-out", "Primary", "OUTFLOW", None, "1988-11-22", NOW),
+    )
+    rows["parent_time_series_id"] = ["inst-in", "inst-out"]
+    monkeypatch.setattr(usgs, "_series_metadata", lambda sites, service: rows)
+    ranked = usgs.choose_series(["x"], pins={"07358280": "inst-out"}, service="dv")
+    assert [s.id for s in ranked["USGS-07358280"]] == ["daily-out", "daily-in"]
+
+
 def test_a_pin_the_site_does_not_have_is_warned_about(monkeypatch, caplog):
     rows = [("01646500", "only", "Primary", None, None, "1972-06-09", NOW)]
     assert choose(monkeypatch, *rows, pins={"01646500": "nope"}) == {}
