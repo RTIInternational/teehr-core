@@ -51,8 +51,20 @@ def test_gaps_and_no_data_leave_the_smallest_step():
         ("2026-11-27T23:00:00Z", 1.1), ("2026-11-28T07:00:00Z", 1.2),
         ("2026-11-28T08:00:00Z", -9999)))  # fmt: skip
     assert got.step == timedelta(hours=1)
-    assert got.reference_time == at("2026-11-27T21:00:00Z")
+    assert got.reference_time == at("2026-11-27T20:00:00Z")
     assert got.rows.num_rows == 3
+
+
+def test_leading_no_data_keeps_the_reference_time():
+    # TSCA3, 2026-11-27: issued 17:18, its first five days no-data.
+    got = nwps.to_forecast("TSCA3", payload(
+        ("2026-11-27T13:00:00Z", -999), ("2026-11-27T14:00:00Z", -999),
+        ("2026-12-02T20:00:00Z", 0.0841), ("2026-12-02T21:00:00Z", 0.148)))  # fmt: skip
+    assert (got.step, got.reference_time) == (timedelta(hours=1), at("2026-11-27T12:00:00Z"))
+    assert got.rows["value_time"].to_pylist() == [
+        at("2026-12-02T20:00:00Z"),
+        at("2026-12-02T21:00:00Z"),
+    ]
 
 
 def test_cfs_is_converted_too():
@@ -67,7 +79,8 @@ def test_cfs_is_converted_too():
     payload(("2026-11-28T01:00:00Z", 1.0), ("2026-11-28T02:00:00Z", 1.0), name="Stage",
             unit="ft"),
     payload(("2026-11-28T01:00:00Z", 1.0), ("2026-11-28T02:00:00Z", 1.0), unit="mgd"),
-    payload(("2026-11-28T01:00:00Z", 1.0), ("2026-11-28T02:00:00Z", -999)),
+    payload(("2026-11-28T01:00:00Z", 1.0)),
+    payload(("2026-11-28T01:00:00Z", -999), ("2026-11-28T02:00:00Z", -9999)),
     {"secondaryName": None, "data": []},
 ])  # fmt: skip
 def test_no_flow_forecast(response):
@@ -112,5 +125,5 @@ def test_live_forecasts():
     ]
     assert got
     for forecast in got:
-        assert forecast.rows["value_time"][0].as_py() - forecast.step == forecast.reference_time
+        assert forecast.rows["value_time"][0].as_py() - forecast.step >= forecast.reference_time
         assert forecast.reference_time < datetime.now(UTC) + timedelta(days=1)
