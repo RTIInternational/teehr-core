@@ -9,4 +9,5 @@ scheduled flow or a person's notebook.
 
 - :mod:`.usgs`: USGS streamflow observations (the USGS Water Data API).
 - :mod:`.nwm`: NWM operational streamflow forecasts and analyses at reaches (NOAA's GCS bucket).
+- :mod:`.nwps`: RFC streamflow forecasts at gauges (the NWS National Water Prediction Service API).
 """
