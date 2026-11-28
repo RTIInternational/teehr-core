@@ -6,14 +6,16 @@ Each gauge's latest forecast (``/nwps/v1/gauges/<lid>/stageflow/forecast``), as 
 
 As the legacy ingest did:
 
-- the reference time is one step before the forecast's first valid time (the API's
-  ``issuedTime`` is when the product went out, after the forecast's start);
-- no-data values (:data:`NODATA`) are dropped;
+- the reference time is one step before the forecast's first time (the API's ``issuedTime``
+  is when the product went out, after the forecast's start);
+- no-data values (:data:`NODATA`) are dropped (after the times, with them, set the reference
+  time and step: some forecasts' first days are all no-data);
 - a gauge whose forecast has no flow (stage only, or nothing) gives no forecast.
 
 Unlike legacy, any step is kept (RFCs forecast at 1, 3 or 6 hours), and the step is the
 smallest between the forecast's times, so a forecast with missing times (gaps) still has its
-reference time.
+reference time; and a forecast starting with no-data values gets its reference time from its
+first time, not its first value (legacy's could be days after the forecast was issued).
 
     from teehr_core.fetch import nwps
 
@@ -128,7 +130,8 @@ def to_forecast(lid: str, payload: Mapping[str, Any]) -> Forecast | None:
     -------
     Forecast or None
         None when the forecast has no flow (``secondaryName`` isn't ``Flow``), its unit isn't
-        one of :data:`TO_M3S`, or it has fewer than two valid values (no step).
+        one of :data:`TO_M3S`, it lists fewer than two times (no step) or it has no valid
+        value.
 
     Examples
     --------
@@ -145,17 +148,22 @@ def to_forecast(lid: str, payload: Mapping[str, Any]) -> Forecast | None:
     if unit not in TO_M3S:
         logger.warning("NWPS %s: flow in %r, not one of %s: skipped", lid, unit, list(TO_M3S))
         return None
+    listed: set[datetime] = set()
     values: dict[datetime, float] = {}
     for point in payload.get("data") or []:
-        value, valid = point.get("secondary"), point.get("validTime")
-        if value is None or valid is None or float(value) in NODATA:
+        valid, value = point.get("validTime"), point.get("secondary")
+        if valid is None:
             continue
-        values[datetime.fromisoformat(valid.replace("Z", "+00:00"))] = float(value)
-    times = sorted(values)
-    if len(times) < 2:
+        time = datetime.fromisoformat(valid.replace("Z", "+00:00"))
+        listed.add(time)
+        if value is not None and float(value) not in NODATA:
+            values[time] = float(value)
+    if len(listed) < 2 or not values:
         return None
-    step = min(b - a for a, b in pairwise(times))
-    reference = times[0] - step
+    every = sorted(listed)
+    step = min(b - a for a, b in pairwise(every))
+    reference = every[0] - step
+    times = sorted(values)
     key = series_key(lid)
     rows = pa.table({
         "series_key": [key] * len(times),
