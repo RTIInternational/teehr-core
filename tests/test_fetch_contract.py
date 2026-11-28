@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("pandas")
 pytest.importorskip("h5py")
 
-from teehr_core.fetch import nwm, usgs
+from teehr_core.fetch import nwm, nwps, usgs
 from teehr_core.model.dataset_types import arrow_schema, timeseries_columns
 from tests.test_fetch_nwm import DAY, channel_rt
 from tests.test_fetch_nwm import bucket as bucket
@@ -40,7 +40,14 @@ def nwm_analysis_rows(store):
     return nwm, rows, []
 
 
-@pytest.mark.parametrize("case", [usgs_rows, nwm_forecast_rows, nwm_analysis_rows])
+def nwps_rows(_store):
+    got = nwps.to_forecast("ANAW1", {"secondaryName": "Flow", "secondaryUnits": "kcfs", "data": [
+        {"validTime": "2026-11-27T18:00:00Z", "secondary": 13.5},
+        {"validTime": "2026-11-28T00:00:00Z", "secondary": 13.6}]})  # fmt: skip
+    return nwps, got.rows, ["reference_time"]
+
+
+@pytest.mark.parametrize("case", [usgs_rows, nwm_forecast_rows, nwm_analysis_rows, nwps_rows])
 def test_rows_are_v1_timeseries_rows(case, bucket, units):
     source, rows, optional = case(bucket)
     assert rows.num_rows

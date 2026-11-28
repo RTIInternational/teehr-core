@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -240,6 +240,7 @@ def write_timeseries(
     unit: str | None = None,
     units: UnitRegistry | None = None,
     location_of: Callable[[str], str | None] | None = None,
+    fields_of: Callable[[str], Mapping[str, str | None]] | None = None,
     properties: dict[str, str] | None = None,
     replace_months: bool = False,
 ) -> Written:
@@ -250,8 +251,9 @@ def write_timeseries(
     not at all, and writing it again changes nothing. Values are in ``unit`` (default: the
     dataset's own); another unit is converted with ``units``. A new series is at the location
     ``location_of(series_key)`` in the dataset's location layer (e.g. ``lambda key: key`` when
-    series keys are location keys; default: unset). ``producer`` names who wrote it (a flow
-    run, a notebook) in each commit, with ``properties``.
+    series keys are location keys; default: unset), with the series table's other fields from
+    ``fields_of(series_key)`` (e.g. ``{"resolution": "PT6H"}``). ``producer`` names who wrote
+    it (a flow run, a notebook) in each commit, with ``properties``.
 
     ``replace_months``: each batch holds whole UTC months (of ``reference_time`` for a forecast,
     else ``value_time``), and replaces those months: rows of any series not in the batch are
@@ -298,6 +300,10 @@ def write_timeseries(
                                                pa.string())  # fmt: skip
             if layer:
                 new["location_layer"] = pa.array([layer] * len(keys), pa.string())
+            if fields_of is not None:
+                fields = [dict(fields_of(k)) for k in keys.to_pylist()]
+                for column in sorted({c for f in fields for c in f}):
+                    new[column] = pa.array([f.get(column) for f in fields], pa.string())
             written.series_added += insert_missing(
                 series, conform(pa.table(new), columns_of(series)), commit
             )

@@ -79,6 +79,22 @@ def test_writes_batches_and_adds_their_series(catalog):
     assert table.current_snapshot().summary[wh.PRODUCER] == "test"
 
 
+def test_new_series_get_their_other_fields(catalog):
+    write_timeseries(
+        catalog,
+        "p",
+        "flow",
+        rows(("a", 0, 1.0), ("b", 0, 2.0)),
+        producer="test",
+        fields_of=lambda key: {"resolution": "PT6H" if key == "a" else None},
+    )
+    again = write_timeseries(catalog, "p", "flow", rows(("a", 1, 3.0)), producer="test",
+                             fields_of=lambda key: {"resolution": "PT1H"})  # fmt: skip
+    assert again.series_added == 0  # an existing series keeps its fields
+    series = {r["series_key"]: r["resolution"] for r in stored(catalog, "flow_series")}
+    assert series == {"a": "PT6H", "b": None}
+
+
 def test_each_commit_loads_the_tables_again(catalog, monkeypatch):
     """A catalog's vended storage credentials expire (Polaris: an hour) during long writes."""
     loaded = []
