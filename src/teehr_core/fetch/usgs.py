@@ -24,9 +24,9 @@ from __future__ import annotations
 import logging
 import os
 import time
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Literal, NamedTuple
+from typing import Any, Literal, NamedTuple
 
 import pandas as pd
 import pyarrow as pa
@@ -44,7 +44,8 @@ NODATA = (-999999.0, -99999.0, -9999.0, -999.0)
 DAILY_MEAN = "00003"
 #: Sites per request.
 BATCH_SITES = 100
-#: Tries for a bulk file when rate limited (429), waiting between them: about an hour.
+#: Tries for a bulk file or an API request when rate limited (429; or, for the API, down:
+#: 5xx), waiting between them: about an hour in all.
 RATE_LIMIT_TRIES = 8
 #: Sites per metadata request (:func:`choose_series`).
 METADATA_SITES = 200
@@ -100,16 +101,65 @@ def _request(service: Service, sites: list[str], start: datetime, end: datetime)
     last = end - timedelta(minutes=1)  # the API's range includes its end
     if service == "iv":
         time = f"{start:%Y-%m-%dT%H:%M:%S}Z/{last:%Y-%m-%dT%H:%M:%S}Z"
-        frame, _ = waterdata.get_continuous(
-            monitoring_location_id=ids, parameter_code=PARAMETER_CODE, time=time
-        )
+        frame, _ = _waiting(
+            waterdata.get_continuous,
+            monitoring_location_id=ids, parameter_code=PARAMETER_CODE, time=time,
+        )  # fmt: skip
     else:
         time = f"{start:%Y-%m-%d}/{last:%Y-%m-%d}"
-        frame, _ = waterdata.get_daily(
+        frame, _ = _waiting(
+            waterdata.get_daily,
             monitoring_location_id=ids, parameter_code=PARAMETER_CODE, time=time,
             statistic_id=DAILY_MEAN, skip_geometry=True,
         )  # fmt: skip
     return frame
+
+
+def _waiting(
+    getter: Callable[..., tuple[pd.DataFrame, Any]], **kwargs: Any
+) -> tuple[pd.DataFrame, Any]:
+    """Call a Water Data API getter, waiting out rate limits (429) and outages (5xx).
+
+    The API's hourly quota is per key and shared with the bulk files, so a long backfill can
+    use it up. ``dataretrieval`` then raises a :class:`dataretrieval.ChunkInterrupted` (or a
+    :class:`dataretrieval.TransientError`); this waits (the server's ``Retry-After``, else
+    :func:`_retry_after`) and resumes the request's unfinished chunks (or makes it again), up
+    to :data:`RATE_LIMIT_TRIES` tries in all.
+
+    Parameters
+    ----------
+    getter : callable
+        A ``dataretrieval.waterdata`` function, e.g. ``waterdata.get_daily``.
+    **kwargs
+        Its arguments.
+
+    Returns
+    -------
+    tuple
+        The getter's ``(frame, metadata)``.
+
+    Examples
+    --------
+    >>> from dataretrieval import waterdata
+    >>> frame, _ = _waiting(waterdata.get_daily, monitoring_location_id="USGS-01646500",
+    ...                     parameter_code="00060", time="2025-01-01/2025-01-07")
+    """
+    from dataretrieval import ChunkInterrupted, TransientError
+
+    try:
+        return getter(**kwargs)
+    except (ChunkInterrupted, TransientError) as exc:
+        interrupted = exc
+    for attempt in range(RATE_LIMIT_TRIES - 1):
+        wait = int(getattr(interrupted, "retry_after", None) or _retry_after("", attempt))
+        logger.warning("USGS API: %s; waiting %d s", type(interrupted).__name__, wait)
+        time.sleep(wait)
+        call = getattr(interrupted, "call", None)
+        try:
+            return call.resume() if call is not None else getter(**kwargs)
+        except (ChunkInterrupted, TransientError) as exc:
+            interrupted = exc
+    raise interrupted
 
 
 def _series_metadata(sites: list[str] | None, service: Service) -> pd.DataFrame:
@@ -127,8 +177,8 @@ def _series_metadata(sites: list[str] | None, service: Service) -> pd.DataFrame:
     )
     frames = []
     for group in groups:
-        frame, _ = waterdata.get_time_series_metadata(
-            monitoring_location_id=group,
+        frame, _ = _waiting(
+            waterdata.get_time_series_metadata, monitoring_location_id=group,
             parameter_code=PARAMETER_CODE, computation_period_identifier=period,
             statistic_id=statistic, properties=fields, skip_geometry=True,
         )  # fmt: skip

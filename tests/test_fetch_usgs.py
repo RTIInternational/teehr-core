@@ -385,3 +385,37 @@ def test_bulk_file_waits_out_rate_limits_with_the_key(monkeypatch):
     assert len(frame) == 1
     assert seen == ["k", "k", "k"]
     assert waits == [7, 120]
+
+
+def test_api_requests_wait_out_the_rate_limit(monkeypatch):
+    """A 429 waits (Retry-After, else doubling) and resumes the request's pending chunks."""
+    from dataretrieval import QuotaExhausted, RateLimited
+
+    calls, waits = [], []
+
+    class Call:
+        partial_frame, partial_response = pd.DataFrame(), None
+
+        def resume(self):
+            calls.append("resume")
+            if len(calls) == 2:
+                raise QuotaExhausted(completed_chunks=1, total_chunks=2, call=self)
+            return "frame", "meta"
+
+    def getter(**kwargs):
+        calls.append(kwargs)
+        raise QuotaExhausted(completed_chunks=0, total_chunks=2, call=Call(), retry_after=7)
+
+    monkeypatch.setattr(usgs.time, "sleep", waits.append)
+    assert usgs._waiting(getter, site="x") == ("frame", "meta")
+    assert calls == [{"site": "x"}, "resume", "resume"]
+    assert waits == [7, 120]
+
+    def limited(**kwargs):  # a single request: no chunks to resume, so made again
+        calls.append("again")
+        raise RateLimited("429")
+
+    calls.clear()
+    with pytest.raises(RateLimited):
+        usgs._waiting(limited)
+    assert calls == ["again"] * usgs.RATE_LIMIT_TRIES
